@@ -1,0 +1,58 @@
+﻿@* @using CourseProject.Models.MainModelViews
+@model Question
+
+<div class="card question-item mb-3" draggable="true">
+    <h2>dsfsdfdsf</h2>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="question-type-badge">
+            @switch (Model.Type)
+            {
+                case QuestionType.SingleLineText:
+                    <span class="badge bg-primary">Текст</span>
+                    break;
+                case QuestionType.MultiLineText:
+                    <span class="badge bg-info">Многострочный</span>
+                    break;
+                case QuestionType.Integer:
+                    <span class="badge bg-success">Число</span>
+                    break;
+                case QuestionType.Checkbox:
+                    <span class="badge bg-warning">Чекбокс</span>
+                    break;
+            }
+        </div>
+        <button type="button" class="btn btn-danger btn-sm"
+                onclick="this.parentElement.parentElement.remove()">
+            <i class="bi bi-trash"></i>
+        </button>
+    </div>
+    <div class="card-body">
+        <input type="hidden" asp-for="Type" />
+        <input type="hidden" asp-for="Order" />
+
+        <div class="mb-3">
+            <label asp-for="Text" class="form-label"></label>
+            <input asp-for="Text" class="form-control" />
+            <span asp-validation-for="Text" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Description" class="form-label"></label>
+            <textarea asp-for="Description" class="form-control" rows="2"></textarea>
+        </div>
+
+        @if (Model.Type == QuestionType.Integer)
+        {
+            <div class="row">
+                <div class="col-md-6">
+                    <label asp-for="MinValue" class="form-label"></label>
+                    <input asp-for="MinValue" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="MaxValue" class="form-label"></label>
+                    <input asp-for="MaxValue" class="form-control" />
+                </div>
+            </div>
+        }
+    </div>
+</div> *@

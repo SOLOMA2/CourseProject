@@ -1,0 +1,181 @@
+﻿@using CourseProject.Models.ViewsModels.MainPageModel
+@model HomeIndexViewModel
+@{
+    ViewData["Title"] = "Главная страница";
+}
+
+<div class="container mt-4">
+    <!-- Улучшенный поиск -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <form method="get" asp-action="Index" class="shadow-sm">
+                <div class="input-group">
+                    <input type="text"
+                           asp-for="SearchQuery"
+                           class="form-control form-control-lg"
+                           placeholder="Поиск по названию, описанию или тегам...">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+        <div class="col-md-4 text-end">
+            @if (User.Identity.IsAuthenticated)
+            {
+                <a asp-action="Template" asp-controller="CreateTemplate"
+                   class="btn btn-success btn-lg">
+                    <i class="bi bi-plus-lg"></i> Создать шаблон
+                </a>
+            }
+            else
+            {
+                <a asp-area="Identity" asp-page="/Account/Login"
+                   class="btn btn-outline-success btn-lg">
+                    Войдите, чтобы создать шаблон
+                </a>
+            }
+        </div>
+    </div>
+
+    <!-- Облако тегов с реальными данными -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-tags"></i> Популярные теги</h5>
+        </div>
+        <div class="card-body">
+            @if (Model.PopularTags?.Any() == true)
+            {
+                <div class="tag-cloud">
+                    @foreach (var tagInfo in Model.PopularTags.OrderByDescending(t => t.UsageCount))
+                    {
+                        <a href="#" class="badge bg-secondary me-1 mb-2 hover-scale">
+                            @tagInfo.Tag.Name
+                            <span class="badge bg-light text-dark ms-1">@tagInfo.UsageCount</span>
+                        </a>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="text-muted">Теги не найдены</div>
+            }
+        </div>
+    </div>
+
+    <!-- Унифицированные карточки шаблонов -->
+    <h3 class="mb-3"><i class="bi bi-fire"></i> Популярные шаблоны</h3>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
+        @await Html.PartialAsync("_TemplateCards", Model.PopularTemplates)
+    </div>
+
+    <h3 class="mb-3"><i class="bi bi-clock-history"></i> Новые шаблоны</h3>
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        @await Html.PartialAsync("_TemplateCards", Model.RecentTemplates)
+    </div>
+</div>
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/likeHub")
+                .withAutomaticReconnect()
+                .build();
+
+            const viewConnection = new signalR.HubConnectionBuilder()
+                .withUrl("/viewHub")
+                .build();
+
+                    viewConnection.on("ReceiveViewUpdate", (templateId, viewsCount) => {
+            document.querySelectorAll(`[data-template-id="${templateId}"] .view-count`)
+                .forEach(e => {
+                    e.textContent = viewsCount;
+                    // Добавим анимацию
+                    e.classList.add('view-update-animation');
+                    setTimeout(() => e.classList.remove('view-update-animation'), 500);
+                });
+        });
+
+            viewConnection.start()
+                .then(() => console.log('ViewHub Connected'))
+                .catch(err => console.error('ViewHub Error:', err));
+
+            // Обновляем только счетчик лайков
+            connection.on("ReceiveLikeUpdate", (templateId, likesCount) => {
+                document.querySelectorAll(`[data-template-id="${templateId}"] + .like-count`)
+                    .forEach(e => e.textContent = likesCount);
+            });
+
+            connection.start()
+                .then(() => console.log('SignalR Connected'))
+                .catch(err => console.error('SignalR Connection Error: ', err));
+
+            document.querySelectorAll('.like-button').forEach(button => {
+                button.addEventListener('click', async function() {
+                    const templateId = parseInt(this.dataset.templateId);
+                    try {
+                        // Оптимистичное обновление иконки
+                        const isLiked = this.classList.contains('bi-heart');
+                        this.classList.toggle('bi-heart', !isLiked);
+                        this.classList.toggle('bi-heart-fill', isLiked);
+                        this.classList.toggle('text-danger', isLiked);
+
+                        await connection.invoke("ToggleLike", templateId);
+                    } catch (err) {
+                        // Откат изменений при ошибке
+                        const isLiked = this.classList.contains('bi-heart');
+                        this.classList.toggle('bi-heart', !isLiked);
+                        this.classList.toggle('bi-heart-fill', isLiked);
+                        this.classList.toggle('text-danger', isLiked);
+
+                        if (err.statusCode === 401) {
+                            window.location.href = '/Identity/Account/Login';
+                        }
+                        console.error('Error:', err);
+                    }
+                });
+            });
+        });
+    </script>
+}
+@section Styles {
+    <style>
+        .hover-scale {
+            transition: transform 0.2s;
+        }
+
+            .hover-scale:hover {
+                transform: scale(1.05);
+                cursor: pointer;
+            }
+
+        .template-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+
+            .template-card .badge-new {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                font-size: 0.9rem;
+            }
+
+            .template-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+            }
+
+        .card-img-top {
+            height: 200px;
+            object-fit: cover;
+            border-bottom: 1px solid rgba(0,0,0,0.125);
+        }
+
+        .stats-icon {
+            font-size: 0.9rem;
+            margin-right: 0.3rem;
+        }
+    </style>
+}

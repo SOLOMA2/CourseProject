@@ -1,0 +1,468 @@
+﻿@model FormResponse
+@{
+    ViewData["Title"] = "Ответ на форму";
+}
+
+<div class="container mt-4" style="padding-bottom: 100px;">
+    <form asp-action="UserAnswer" asp-controller="TemplateAnswer" method="post" id="responseForm">
+        <input type="hidden" asp-for="TemplateId" />
+        <input type="hidden" asp-for="UserId" />
+
+        <!-- Шапка формы -->
+        <div class="card mb-4 shadow">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex align-items-center gap-3">
+                    @if (!string.IsNullOrEmpty(Model.Template.ImagePath))
+                    {
+                        <img src="@Model.Template.ImagePath"
+                        class="img-fluid rounded-circle"
+                        style="width: 80px; height: 80px; object-fit: cover;"
+                        alt="Изображение формы">
+                    }
+                    <div>
+                        <h1 class="mb-1">@Model.Template.Title</h1>
+                        <p class="lead mb-0">@Model.Template.Description</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вопросы -->
+        @for (int i = 0; i < Model.Template.Questions.Count; i++)
+        {
+            var question = Model.Template.Questions[i];
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="question-type-icon">
+                            <i class="bi @GetQuestionIcon(question.Type) fs-4"></i>
+                        </div>
+                        <h4 class="mb-0">
+                            @question.Text
+                            @if (question.IsRequired)
+                            {
+                                <span class="text-danger">*</span>
+                            }
+                        </h4>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    @switch (question.Type)
+                    {
+                        case QuestionType.Text:
+                            <input type="text"
+                            name="Answers[@question.Id].Text"
+                            class="form-control response-input"
+                            placeholder="Краткий ответ"
+                            maxlength="@question.MaxLength"
+                            required="@question.IsRequired">
+                            break;
+
+                        case QuestionType.Paragraph:
+                            <textarea name="Answers[@question.Id].Text"
+                            class="form-control response-textarea"
+                            rows="3"
+                            placeholder="Развернутый ответ"
+                            maxlength="@question.MaxLength"
+                            required="@question.IsRequired"></textarea>
+                            break;
+
+                        case QuestionType.Radio:
+                            foreach (var option in question.Options)
+                            {
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input"
+                                    type="radio"
+                                    name="Answers[@question.Id].SelectedOptions"
+                                    value="@option.Id"
+                                    id="radio_@option.Id"
+                                    required="@question.IsRequired">
+                                    <label class="form-check-label w-100" for="radio_@option.Id">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="radio-indicator"></div>
+                                            <span>@option.Text</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            }
+                            break;
+
+                        case QuestionType.Checkbox:
+                            foreach (var option in question.Options)
+                            {
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input"
+                                    type="checkbox"
+                                    name="Answers[@question.Id].SelectedOptions"
+                                    value="@option.Id"
+                                    id="check_@option.Id">
+                                    <label class="form-check-label w-100" for="check_@option.Id">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="checkbox-indicator"></div>
+                                            <span>@option.Text</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            }
+                            break;
+
+                        case QuestionType.Dropdown:
+                            <select class="form-select"
+                            name="Answers[@question.Id].SelectedOptions"
+                            required="@question.IsRequired">
+                                <option value="">Выберите вариант</option>
+                                @foreach (var option in question.Options)
+                                {
+                                    <option value="@option.Id">@option.Text</option>
+                                }
+                            </select>
+                            break;
+
+                        case QuestionType.YesNo:
+                            <div class="yesno-group btn-group w-100">
+                                <button type="button"
+                                class="btn btn-lg @(GetYesNoClass(question.Id, true))"
+                                data-value="true">
+                                    <i class="bi bi-check2-circle me-2"></i>Да
+                                </button>
+                                <button type="button"
+                                class="btn btn-lg @(GetYesNoClass(question.Id, false))"
+                                data-value="false">
+                                    <i class="bi bi-x-circle me-2"></i>Нет
+                                </button>
+                                <input type="hidden"
+                                name="Answers[@question.Id].Text"
+                                value="@(GetYesNoValue(question.Id))"
+                                required="@question.IsRequired">
+                            </div>
+                            break;
+                    }
+
+                    <!-- Валидация -->
+                    <div class="validation-errors mt-2">
+                        <span class="text-danger"
+                        data-valmsg-for="Answers[@question.Id].Text"
+                        data-valmsg-replace="true"></span>
+                        <span class="text-danger"
+                        data-valmsg-for="Answers[@question.Id].SelectedOptions"
+                        data-valmsg-replace="true"></span>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <!-- После блока с вопросами -->
+        <div class="comments-section">
+            <h3 class="mb-4">
+                <i class="bi bi-chat"></i> Комментарии
+                <span id="commentsCount" class="badge bg-primary">@Model.Template.Comments.Count</span>
+            </h3>
+
+            <div id="commentsList" class="mb-4">
+                @foreach (var comment in Model.Template.Comments)
+                {
+                    <div class="comment card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+@*                                 <img src="@comment.Author.ProfileImageUrl"
+                                     class="rounded-circle"
+                                     style="width:40px;height:40px;object-fit:cover"> *@
+                                <h5 class="mb-0">@comment.Author.UserName</h5>
+                            </div>
+                            <p class="mb-0">@comment.Content</p>
+                            <small class="text-muted">@comment.CreatedAt.ToString("g")</small>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (User.Identity.IsAuthenticated)
+            {
+                <div class="comment-form">
+                    <textarea id="commentInput"
+                              class="form-control mb-2"
+                              placeholder="Ваш комментарий..."
+                              rows="3"></textarea>
+                    <button id="sendComment" class="btn btn-primary">
+                        <i class="bi bi-send"></i> Отправить
+                    </button>
+                </div>
+            }
+        </div>
+
+        <!-- Панель отправки -->
+        <div class="sticky-submit-bar">
+            <div class="container">
+                <div class="card shadow">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="progress" style="width: 200px; height: 10px">
+                                <div class="progress-bar" role="progressbar"
+                                style="width: @CalculateProgress())%"
+                                aria-valuenow="@CalculateProgress())"
+                                aria-valuemin="0"
+                                aria-valuemax="100"></div>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-send-check me-2"></i>Отправить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <script>
+        // Подключение к хабу комментариев
+            // 1. Подключение к хабу
+        const commentHub = new signalR.HubConnectionBuilder()
+            .withUrl("/commentHub")
+            .build();
+
+        // 2. Обработчик отправки комментария
+        document.getElementById('sendComment')?.addEventListener('click', async () => {
+            try {
+                const commentText = document.getElementById('commentInput').value;
+                const templateId = @Model.Template.Id;
+
+                await commentHub.invoke("SendComment", templateId, commentText);
+                document.getElementById('commentInput').value = '';
+            } catch (err) {
+                console.error('Ошибка:', err);
+            }
+        });
+
+        // 3. Обработчик получения новых комментариев
+        commentHub.on("ReceiveComment", (comment) => {
+            const commentsList = document.getElementById('commentsList');
+            const commentsCount = document.getElementById('commentsCount');
+
+            // Создаем новый элемент комментария
+            const commentHtml = `
+                <div class="comment card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <img src="${comment.authorImage}"
+                                 class="rounded-circle"
+                                 style="width:40px;height:40px;object-fit:cover">
+                            <h5 class="mb-0">${comment.authorName}</h5>
+                        </div>
+                        <p class="mb-0">${comment.content}</p>
+                        <small class="text-muted">${new Date(comment.date).toLocaleString()}</small>
+                    </div>
+                </div>
+            `;
+
+            // Добавляем в начало списка и обновляем счетчик
+            commentsList.insertAdjacentHTML('afterbegin', commentHtml);
+            commentsCount.textContent = parseInt(commentsCount.textContent) + 1;
+        });
+
+        // 4. Запуск подключения
+        commentHub.start()
+            .then(() => console.log('SignalR подключен'))
+            .catch(err => console.error('Ошибка подключения:', err));
+
+        // Вспомогательные функции
+        function getTimeAgo(date) {
+            const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+            if (seconds < 60) return 'только что';
+            if (seconds < 3600) return `${Math.floor(seconds/60)} мин назад`;
+            if (seconds < 86400) return `${Math.floor(seconds/3600)} ч назад`;
+            return new Date(date).toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
+
+        function initTooltips(element = document) {
+            new bootstrap.Tooltip(element.querySelector('[data-bs-toggle="tooltip"]'));
+        }
+
+        function showToast(title, message, type = 'success') {
+            const toastElement = document.getElementById('toast');
+            toastElement.querySelector('.toast-title').textContent = title;
+            toastElement.querySelector('.toast-body').textContent = message;
+            toastElement.classList.add(`bg-${type}`);
+            new bootstrap.Toast(toastElement).show();
+        }
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', () => {
+            commentConnection.start().catch(console.error);
+            initTooltips();
+        });
+    </script>
+}
+
+@functions {
+    private string GetQuestionIcon(QuestionType type)
+    {
+        return type switch
+        {
+            QuestionType.Text => "bi-input-cursor-text",
+            QuestionType.Paragraph => "bi-text-paragraph",
+            QuestionType.Radio => "bi-ui-radios",
+            QuestionType.Checkbox => "bi-ui-checks-grid",
+            QuestionType.Dropdown => "bi-menu-down",
+            QuestionType.YesNo => "bi-toggle-on",
+            _ => "bi-question-circle"
+        };
+    }
+
+    private string GetYesNoClass(int questionId, bool isYes)
+    {
+        var answer = Model.Answers?.FirstOrDefault(a => a.QuestionId == questionId);
+        var value = answer?.Text == "true";
+        return (isYes && value) || (!isYes && !value)
+            ? "active btn-" + (isYes ? "success" : "danger")
+            : "btn-outline-" + (isYes ? "success" : "danger");
+    }
+
+    private string GetYesNoValue(int questionId)
+    {
+        return Model.Answers?.FirstOrDefault(a => a.QuestionId == questionId)?.Text ?? "";
+    }
+
+    private double CalculateProgress()
+    {
+        var answered = Model.Answers?.Count(a =>
+            a.Question.IsRequired &&
+            (!string.IsNullOrEmpty(a.Text) || a.SelectedOptions.Any())) ?? 0;
+        return Math.Round((answered / (double)Model.Template.Questions.Count) * 100);
+    }
+    private string GetTimeAgo(DateTime date)
+    {
+        TimeSpan timeSpan = DateTime.UtcNow - date;
+
+        if (timeSpan.TotalSeconds < 60)
+        {
+            return "только что";
+        }
+        else if (timeSpan.TotalSeconds < 3600)
+        {
+            return $"{Math.Floor(timeSpan.TotalMinutes)} мин назад";
+        }
+        else if (timeSpan.TotalSeconds < 86400)
+        {
+            return $"{Math.Floor(timeSpan.TotalHours)} ч назад";
+        }
+        else
+        {
+            return date.ToString("dd MMM yyyy");
+        }
+    }
+}
+
+@section Styles {
+    <style>
+        /* Добавить в секцию Styles */
+        .comment-content {
+            position: relative;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+            .comment-content::before {
+                content: "";
+                position: absolute;
+                left: -10px;
+                top: 15px;
+                width: 0;
+                height: 0;
+                border-top: 8px solid transparent;
+                border-bottom: 8px solid transparent;
+                border-right: 10px var(--bs-light) solid;
+                filter: drop-shadow(-1px 0 1px rgba(0,0,0,0.05));
+            }
+
+        .comment:hover .comment-content {
+            background-color: #f8f9fa;
+            transform: translateX(5px);
+        }
+
+        .bg-blur {
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(10px);
+        }
+
+        .hover-primary:hover {
+            color: var(--bs-primary) !important;
+        }
+
+        [data-simplebar] {
+            padding-right: 1rem;
+        }
+
+        .question-type-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #e9ecef;
+            border-radius: 8px;
+        }
+
+        .response-input, .response-textarea {
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1rem;
+            transition: all 0.3s ease;
+        }
+
+            .response-input:focus, .response-textarea:focus {
+                border-color: #0d6efd;
+                box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+            }
+
+        .radio-indicator, .checkbox-indicator {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #adb5bd;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-indicator {
+            border-radius: 4px;
+        }
+
+        .form-check-input:checked ~ .form-check-label .radio-indicator {
+            border-color: #0d6efd;
+            background: #0d6efd radial-gradient(circle, white 35%, transparent 40%);
+        }
+
+        .form-check-input:checked ~ .form-check-label .checkbox-indicator {
+            border-color: #0d6efd;
+            background: #0d6efd url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e") center/60% no-repeat;
+        }
+
+        .yesno-group .btn {
+            flex: 1;
+            transition: all 0.3s ease;
+        }
+
+        .yesno-group .active {
+            transform: scale(0.98);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .sticky-submit-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255,255,255,0.95);
+            padding: 1rem 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+    </style>
+}

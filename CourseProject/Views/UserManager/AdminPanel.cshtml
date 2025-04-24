@@ -1,0 +1,252 @@
+﻿@model AdminPanel
+@{
+    ViewData["Title"] = "AdminPanel";
+}
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-grid gap-2 d-md-block mb-2">
+            <form method="post" id="actionForm" class="d-flex gap-2">
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" name="pageNumber" value="@Model.PageIndex" />
+                <input type="hidden" name="search" value="@Model.SearchTerm" />
+
+                <button type="submit"
+                        class="btn btn-danger btn-sm d-flex align-items-center gap-1 tooltip-btn"
+                        formaction="@Url.Action("BlockUsers")"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="Block selected users">
+                    <i class="bi bi-lock"></i>
+                    <span>Block</span>
+                </button>
+                <button type="submit"
+                        class="btn btn-success btn-sm d-flex align-items-center gap-1 tooltip-btn"
+                        formaction="@Url.Action("UnblockUsers")"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="Unblock selected users">
+                    <i class="bi bi-unlock"></i>
+                </button>
+                <button type="submit"
+                        class="btn btn-dark btn-sm d-flex align-items-center gap-1 tooltip-btn"
+                        formaction="@Url.Action("DeleteUsers")"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="top"
+                        title="Delete selected users">
+                    <i class="bi bi-trash"></i>
+                </button>
+
+            </form>
+        </div>
+        <form method="get" class="d-flex gap-2">
+            <div class="input-group input-group-sm">
+                <input type="text"
+                       name="search"
+                       class="form-control"
+                       placeholder="Filter users..."
+                       value="@Context.Request.Query["search"]" />
+                <button type="submit" class="btn btn-outline-secondary">
+                    <i class="bi bi-search"></i>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="modal fade" id="rolesModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Roles</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="rolesForm" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="userId" id="modalUserId">
+                        <input type="hidden" name="pageNumber" value="@Model.PageIndex">
+                        <input type="hidden" name="search" value="@Model.SearchTerm">
+
+                        <div class="list-group">
+                            @foreach (var role in ViewBag.AllRoles)
+                            {
+                                <label class="list-group-item">
+                                    <input class="form-check-input me-2"
+                                           type="checkbox"
+                                           name="selectedRoles"
+                                           value="@role">
+                                    @role
+                                </label>
+                            }
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="submitRolesForm()">Save changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <table class="table table-bordered table-hover">
+        <thead class="table-light">
+            <tr>
+                <th><input type="checkbox" id="selectAll" /></th>
+                <th scope="col">Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Status</th>
+                <th scope="col">Role</th>
+                <th scope="col">Last seen</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(var user in Model.Users)
+            {
+                <tr>
+                    <td><input type="checkbox" name="userIds" value="@user.User.Id" form="actionForm" /></td>
+                    <td>@user.User.UserName</td>
+                    <td>@user.User.Email</td>
+                    <td>
+                        <span class="badge @(user.User.LockoutEnd?.UtcDateTime > DateTime.UtcNow ? "bg-danger" : "bg-success") p-2">
+                            @(user.User.LockoutEnd?.UtcDateTime > DateTime.UtcNow ? "🚫 Blocked" : "✅ Active")
+                        </span>
+                    </td>
+                    <td>
+                        <div class="d-flex flex-wrap gap-1 align-items-center roles-container">
+                            @foreach (var role in user.Roles)
+                            {
+                                <span class="badge bg-primary rounded-pill">@role</span>
+                            }
+                            <button type="button"
+                                    class="btn btn-link btn-sm p-0 ms-2"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#rolesModal"
+                                    data-user-id="@user.User.Id"
+                                    data-user-roles='@Json.Serialize(user.Roles)'>
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td>@user.User.LastLogin</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <!-- Пагинация -->
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-start">
+            @if (Model.HasPreviousPage)
+            {
+                <li class="page-item">
+                    <a class="page-link"
+                       href="@Url.Action("AdminPanel", new { pageNumber = Model.PageIndex - 1, search = Model.SearchTerm })">
+                        Previous
+                    </a>
+                </li>
+            }
+            @for (int i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(i == Model.PageIndex ? "active" : "")">
+                    <a class="page-link"
+                       href="@Url.Action("AdminPanel", new { pageNumber = i, search = Model.SearchTerm })">
+                        @i
+                    </a>
+                </li>
+            }
+            @if (Model.HasNextPage)
+            {
+                <li class="page-item">
+                    <a class="page-link"
+                       href="@Url.Action("AdminPanel", new { pageNumber = Model.PageIndex + 1, search = Model.SearchTerm })">
+                        Next
+                    </a>
+                </li>
+            }
+        </ul>
+    </nav>
+</div>
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        // Обработчик для "Выбрать все" и инициализация тултипов
+        document.addEventListener('DOMContentLoaded', function() {
+            // Чекбокс "Выбрать все"
+            document.getElementById('selectAll').addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('input[name="userIds"]');
+                checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+            });
+
+            // Инициализация тултипов
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl, {
+                    delay: { show: 100, hide: 50 }
+                });
+            });
+
+            // Инициализация модального окна
+            const rolesModal = document.getElementById('rolesModal');
+            rolesModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const userId = button.getAttribute('data-user-id');
+                const roles = JSON.parse(button.getAttribute('data-user-roles'));
+
+                console.log('User ID:', userId); // Для отладки
+                console.log('Current Roles:', roles); // Для отладки
+
+                // Установка значений в форму
+                document.getElementById('modalUserId').value = userId;
+
+                // Сброс чекбоксов
+                document.querySelectorAll('#rolesForm input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = roles.includes(checkbox.value);
+                });
+            });
+        });
+
+                        async function submitRolesForm() {
+            // Подтверждение действия
+            if (!confirm('Вы уверены, что хотите сохранить изменения?')) {
+                return; // Отмена действия
+            }
+
+            const form = document.getElementById('rolesForm');
+            const formData = new FormData(form);
+
+            // Отправка данных
+            await fetch('@Url.Action("UpdateRoles")', {
+                method: 'POST',
+                body: formData
+            });
+
+            // Обновление интерфейса
+            const userId = formData.get('userId');
+            const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+            const rolesContainer = row.querySelector('.roles-container');
+
+            // Получение обновленных ролей
+            const rolesResponse = await fetch(`@Url.Action("GetUserRoles")?userId=${userId}`);
+            const roles = await rolesResponse.json();
+
+            // Обновление блока с ролями
+            rolesContainer.innerHTML = roles.map(role =>
+                `<span class="badge bg-primary rounded-pill">${role}</span>`
+            ).join('') +
+            `<button type="button"
+                    class="btn btn-link btn-sm p-0 ms-2"
+                    data-bs-toggle="modal"
+                    data-bs-target="#rolesModal"
+                    data-user-id="${userId}"
+                    data-user-roles='${JSON.stringify(roles)}'>
+                <i class="bi bi-pencil-square"></i>
+            </button>`;
+
+            // Закрытие модального окна
+            bootstrap.Modal.getInstance(document.getElementById('rolesModal')).hide();
+        }
+    </script>
+}

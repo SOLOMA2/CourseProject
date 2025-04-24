@@ -1,0 +1,622 @@
+﻿@using CourseProject.Models.MainModelViews
+@model Template
+@{
+    ViewData["Title"] = "Создать новый шаблон";
+}
+
+<div class="container mt-4">
+    <form asp-action="Template" asp-controller="CreateTemplate" enctype="multipart/form-data" method="post" id="templateForm">
+        <div asp-validation-summary="All" class="text-danger"></div>
+        <!-- Основная информация -->
+        <div class="card mb-4 shadow">
+            <div class="card-header bg-primary text-white">
+                <h4><i class="bi bi-file-earmark-text"></i> Основные настройки</h4>
+            </div>
+            <div class="card-body">
+                <input type="hidden" asp-for="AuthorId" />
+                <input type="hidden" asp-for="Type" />
+
+                <div class="mb-3">
+                    <label asp-for="Title" class="form-label"></label>
+                    <input asp-for="Title" class="form-control" />
+                    <span asp-validation-for="Title" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Description" class="form-label"></label>
+                    <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                    <span asp-validation-for="Description" class="text-danger"></span>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Изображение шаблона</label>
+                        <input type="file" asp-for="ImageFile" class="form-control" accept="image/*">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label asp-for="TopicId" class="form-label"></label>
+                        <select asp-for="TopicId" class="form-select" asp-items="ViewBag.Topics">
+                            <option value="">Выберите категорию</option>
+                        </select>
+                        <span asp-validation-for="TopicId" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вопросы -->
+        <div class="card mb-4 shadow">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center sticky-top"
+                 style="top: 60px; z-index: 1020;">
+                <h4 class="mb-0"><i class="bi bi-question-circle me-2"></i>Управление вопросами</h4>
+                <div class="btn-group gap-2">
+                    <div class="dropdown">
+                        <button class="btn btn-light btn-sm dropdown-toggle"
+                                type="button"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false">
+                            <i class="bi bi-plus-lg"></i> Добавить вопрос
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <button class="dropdown-item" type="button" data-type="Text" data-action="add-question">
+                                    <i class="bi bi-input-cursor-text me-2"></i>Краткий ответ
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" type="button" data-type="Paragraph" data-action="add-question">
+                                    <i class="bi bi-textarea-t me-2"></i>Абзац
+                                </button>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <button class="dropdown-item" type="button" data-type="Radio" data-action="add-question">
+                                    <i class="bi bi-ui-radios me-2"></i>Один из списка
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" type="button" data-type="Checkbox" data-action="add-question">
+                                    <i class="bi bi-ui-checks-grid me-2"></i>Несколько из списка
+                                </button>
+                            </li>
+                            <li>
+                                <button class="dropdown-item" type="button" data-type="Dropdown" data-action="add-question">
+                                    <i class="bi bi-menu-button me-2"></i>Выпадающий список
+                                </button>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <button class="dropdown-item" type="button" data-type="YesNo" data-action="add-question">
+                                    <i class="bi bi-toggle-on me-2"></i>Да/Нет
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-light btn-sm" type="button" data-action="duplicate">
+                        <i class="bi bi-files"></i> Копировать
+                    </button>
+                    <button class="btn btn-light btn-sm" type="button" data-action="delete">
+                        <i class="bi bi-trash"></i> Удалить
+                    </button>
+                </div>
+            </div>
+
+            <div class="card-body" id="questionsContainer">
+                @for (int i = 0; i < Model.Questions.Count; i++)
+                {
+                    var question = Model.Questions[i];
+                    var showOptions = question.Type == QuestionType.Radio
+                    || question.Type == QuestionType.Checkbox
+                    || question.Type == QuestionType.Dropdown;
+
+                    <div class="card mb-3 shadow-sm question-item" data-type="@question.Type" data-question-index="@i">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-primary dropdown-toggle question-type-btn"
+                                            type="button"
+                                            data-bs-toggle="dropdown"
+                                            aria-expanded="false">
+                                        <i class="bi @GetQuestionIcon(question.Type) me-2"></i>
+                                        <span class="question-type-label">@question.Type</span>
+                                    </button>
+                                    <ul class="dropdown-menu question-type-menu">
+                                        @foreach (var type in Enum.GetValues(typeof(QuestionType)))
+                                        {
+                                            <li>
+                                                <button class="dropdown-item"
+                                                        data-action="change-type"
+                                                        data-type="@type">
+                                                    <i class="bi @GetQuestionIcon((QuestionType)type) me-2"></i>@type
+                                                </button>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           asp-for="@Model.Questions[i].IsRequired" />
+                                    <label class="form-check-label">Обязательный</label>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <div class="form-check">
+                                    <input class="form-check-input question-selector" type="checkbox">
+                                </div>
+                                <button class="btn btn-link text-danger p-0"
+                                        data-action="delete">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <input type="hidden" asp-for="@Model.Questions[i].Order" class="question-order" />
+                            <input type="hidden" asp-for="@Model.Questions[i].Type" class="question-type" />
+                            <input type="hidden" asp-for="@Model.Questions[i].Template" value="Default" />
+                            <input type="hidden" asp-for="@Model.Questions[i].Description" value="No description" />
+
+                            <div class="mb-3">
+                                <input asp-for="@Model.Questions[i].Text"
+                                       class="form-control border-0 border-bottom rounded-0 fs-5 px-0 question-title"
+                                       placeholder="Введите вопрос" />
+                                <input type="text" class="form-control" placeholder="Текст ответа" disabled>
+                                <span asp-validation-for="@Model.Questions[i].Text" class="text-danger"></span>
+                            </div>
+
+                            @if (showOptions)
+                            {
+                                <div class="options-container" data-question-index="@i">
+                                    @for (int j = 0; j < Model.Questions[i].Options.Count; j++)
+                                    {
+                                        <div class="input-group mb-2">
+                                            <input type="hidden" asp-for="@Model.Questions[i].Options[j].Id" />
+                                            <span class="input-group-text">
+                                                <i class="bi @GetOptionIcon(question.Type)"></i>
+                                            </span>
+                                            <input asp-for="@Model.Questions[i].Options[j].Text"
+                                                   class="form-control mb-2"
+                                                   placeholder="Вариант ответа" />
+                                            <button class="btn btn-outline-danger"
+                                                    type="button"
+                                                    data-action="remove-option">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    }
+                                    <button class="btn btn-sm btn-outline-primary w-100"
+                                            type="button"
+                                            data-action="add-option">
+                                        <i class="bi bi-plus-lg me-2"></i>Добавить вариант
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Дополнительные настройки -->
+        <div class="card mb-4 shadow">
+            <div class="card-header bg-primary text-white">
+                <h4><i class="bi bi-gear"></i> Дополнительные настройки</h4>
+            </div>
+            <div class="card-body">
+                <div class="mb-3 form-check form-switch">
+                    <input asp-for="IsPublic" class="form-check-input" type="checkbox">
+                    <label asp-for="IsPublic" class="form-check-label">Публичный доступ</label>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Tags" class="form-label"></label>
+                    <input id="tagsInput" name="tags" class="form-control"
+                           placeholder="Начните вводить тег..."
+                           data-autocomplete-url="@Url.Action("SearchTags", "Templates")">
+                    <div id="selectedTags" class="mt-2">
+                        @for (int i = 0; i < Model.Tags.Count; i++)
+                        {
+                            <span class="badge bg-secondary me-1 mb-1">
+                                @Model.Tags[i].Tag.Name
+                                <input type="hidden" asp-for="@Model.Tags[i].TagId" />
+                                <button type="button" class="btn-close btn-close-white"
+                                        onclick="this.parentElement.remove()"></button>
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-end">
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-save"></i> Сохранить шаблон
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Конфигурация типов вопросов
+        const QUESTION_TYPES = {
+            Text: {
+                icon: 'bi-input-cursor-text',
+                name: 'Краткий ответ',
+                template: () => '<input type="text" class="form-control" placeholder="Текст ответа" disabled>'
+            },
+            Paragraph: {
+                icon: 'bi-textarea-t',
+                name: 'Абзац',
+                template: () => '<textarea class="form-control" rows="3" placeholder="Длинный ответ" disabled></textarea>'
+            },
+            Radio: {
+                icon: 'bi-ui-radios',
+                name: 'Один из списка',
+                template: (questionIndex, options = []) => renderOptionsTemplate('Radio', questionIndex, options)
+            },
+            Checkbox: {
+                icon: 'bi-ui-checks-grid',
+                name: 'Несколько из списка',
+                template: (questionIndex, options = []) => renderOptionsTemplate('Checkbox', questionIndex, options)
+            },
+            Dropdown: {
+                icon: 'bi-menu-button',
+                name: 'Выпадающий список',
+                template: (questionIndex, options = []) => renderOptionsTemplate('Dropdown', questionIndex, options)
+            },
+            YesNo: {
+                icon: 'bi-toggle-on',
+                name: 'Да/Нет',
+                template: () => `
+                    <div class="btn-group w-100">
+                        <button type="button" class="btn btn-outline-success disabled">Да</button>
+                        <button type="button" class="btn btn-outline-danger disabled">Нет</button>
+                    </div>`
+            }
+        };
+
+        let questionCounter = @Model.Questions.Count;
+
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', () => {
+            initEventListeners();
+            initSortable();
+            initDropdowns();
+        });
+
+        // Инициализация обработчиков событий
+        function initEventListeners() {
+            document.addEventListener('click', e => {
+                const target = e.target.closest('[data-action]');
+                if (!target) return;
+
+                const action = target.dataset.action;
+                const questionItem = target.closest('.question-item');
+
+                const actions = {
+                    'add-question': () => addQuestion(target.dataset.type),
+                    'change-type': () => changeType(questionItem, target.dataset.type),
+                    'add-option': () => addOption(questionItem),
+                    'remove-option': () => removeOption(target.closest('.input-group')),
+                    'duplicate': () => duplicateQuestion(questionItem),
+                    'delete': () => deleteQuestion(questionItem),
+                    'toggle-settings': () => toggleSettings(questionItem)
+                };
+
+                if (actions[action]) {
+                    e.preventDefault();
+                    actions[action]();
+                }
+            });
+        }
+
+        // Добавление нового вопроса
+        function addQuestion(type) {
+            const index = questionCounter++;
+            const container = document.getElementById('questionsContainer');
+
+            const questionHTML = `
+                <div class="card mb-3 shadow-sm question-item" data-type="${type}" data-question-index="${index}">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        ${generateQuestionHeader(type, index)}
+                    </div>
+                    <div class="card-body">
+                        ${generateQuestionBody(type, index)}
+                    </div>
+                </div>`;
+
+            container.insertAdjacentHTML('beforeend', questionHTML);
+            initDropdowns();
+            initValidation();
+        }
+
+        // Генерация заголовка вопроса
+        function generateQuestionHeader(type, index) {
+            return `
+                <div class="d-flex align-items-center gap-3">
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-primary dropdown-toggle question-type-btn"
+                                type="button"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false">
+                            <i class="bi ${getQuestionIcon(type)} me-2"></i>
+                            <span class="question-type-label">${QUESTION_TYPES[type].name}</span>
+                        </button>
+                        <ul class="dropdown-menu question-type-menu">
+                            ${Object.keys(QUESTION_TYPES).map(t => `
+                                <li>
+                                    <button class="dropdown-item"
+                                            data-action="change-type"
+                                            data-type="${t}">
+                                        <i class="bi ${getQuestionIcon(t)} me-2"></i>${QUESTION_TYPES[t].name}
+                                    </button>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               name="Questions[${index}].IsRequired"
+                               id="required-${index}">
+                        <label class="form-check-label" for="required-${index}">Обязательный</label>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <div class="form-check">
+                        <input class="form-check-input question-selector" type="checkbox">
+                    </div>
+                    <button class="btn btn-link text-danger p-0"
+                            data-action="delete">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>`;
+        }
+
+        // Генерация тела вопроса
+                function generateQuestionBody(type, questionIndex) {
+            const typeConfig = QUESTION_TYPES[type];
+            return `
+                <input type="hidden" name="Questions[${questionIndex}].Order" value="${questionIndex}" class="question-order" />
+                <input type="hidden" name="Questions[${questionIndex}].Type" value="${type}" class="question-type" />
+                <input type="hidden" name="Questions[${questionIndex}].Template" value="Default" />
+                <input type="hidden" name="Questions[${questionIndex}].Description" value="No description" />
+
+                <div class="mb-3">
+                    <input name="Questions[${questionIndex}].Text"
+                           class="form-control border-0 border-bottom rounded-0 fs-5 px-0 question-title"
+                           placeholder="Введите вопрос"
+                           required />
+                    <span class="text-danger field-validation-valid"
+                          data-valmsg-for="Questions[${questionIndex}].Text"
+                          data-valmsg-replace="true"></span>
+                </div>
+
+                <div class="answer-section mt-3">
+                    <label class="form-label">Поле для ответа:</label>
+                    ${typeConfig.template(questionIndex)}
+                </div>`;
+        }
+
+        // Шаблон для вариантов ответов
+        function renderOptionsTemplate(type, questionIndex, options = []) {
+            return `
+                <div class="options-container" data-question-index="${questionIndex}">
+                    ${options.map((val, i) => renderOptionItem(type, questionIndex, i, val)).join('')}
+                    <button class="btn btn-sm btn-outline-primary w-100"
+                            type="button"
+                            data-action="add-option">
+                        <i class="bi bi-plus-lg me-2"></i>Добавить вариант
+                    </button>
+                </div>`;
+        }
+
+        // Шаблон для одного варианта ответа
+        function renderOptionItem(type, questionIndex, optionIndex, value = '') {
+            return `
+                <div class="input-group mb-2">
+                    <span class="input-group-text">
+                        <i class="bi ${getOptionIcon(type)}"></i>
+                    </span>
+                    <input type="text"
+                           name="Questions[${questionIndex}].Options[${optionIndex}].Text"
+                           class="form-control"
+                           placeholder="Вариант ответа"
+                           value="${value}">
+                    <button class="btn btn-outline-danger"
+                            type="button"
+                            data-action="remove-option">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>`;
+        }
+
+        // Добавление варианта ответа
+        function addOption(questionItem) {
+            const optionsContainer = questionItem.querySelector('.options-container');
+            const questionIndex = questionItem.dataset.questionIndex;
+            const optionIndex = optionsContainer.querySelectorAll('.input-group').length;
+
+            optionsContainer.insertAdjacentHTML('beforeend',
+                renderOptionItem(questionItem.dataset.type, questionIndex, optionIndex));
+            initValidation();
+        }
+
+        // Удаление варианта ответа
+        function removeOption(optionElement) {
+            optionElement.remove();
+            updateQuestionIndexes();
+        }
+
+        // Изменение типа вопроса
+        function changeType(questionItem, newType) {
+            const oldType = questionItem.dataset.type;
+            if (newType === oldType) return;
+
+            questionItem.dataset.type = newType;
+            const typeConfig = QUESTION_TYPES[newType];
+
+            // Обновление заголовка
+            const headerBtn = questionItem.querySelector('.question-type-btn');
+            headerBtn.innerHTML = `
+                <i class="bi ${typeConfig.icon} me-2"></i>
+                <span class="question-type-label">${typeConfig.name}</span>
+            `;
+
+            // Обновление содержимого
+            const body = questionItem.querySelector('.card-body');
+            body.innerHTML = generateQuestionBody(newType, questionItem.dataset.questionIndex);
+            initDropdowns();
+        }
+
+        // Обновление индексов вопросов
+        function updateQuestionIndexes() {
+            document.querySelectorAll('.question-item').forEach((item, index) => {
+                item.dataset.questionIndex = index;
+                item.querySelectorAll('[name*="Questions["]').forEach(el => {
+                    el.name = el.name.replace(/\[\d+\]/g, `[${index}]`);
+                });
+            });
+            questionCounter = document.querySelectorAll('.question-item').length;
+        }
+
+        // Удаление вопроса
+        function deleteQuestion(questionItem) {
+            questionItem.remove();
+            updateQuestionIndexes();
+        }
+
+        // Drag and drop
+        function initSortable() {
+            new Sortable(document.getElementById('questionsContainer'), {
+                handle: '.card-header',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: () => {
+                    updateQuestionIndexes();
+                    initDropdowns();
+                }
+            });
+        }
+
+        // Вспомогательные функции
+        function getQuestionIcon(type) {
+            return QUESTION_TYPES[type]?.icon || 'bi-question-circle';
+        }
+
+        function getOptionIcon(type) {
+            return {
+                'Radio': 'bi-circle',
+                'Checkbox': 'bi-square',
+                'Dropdown': 'bi-list-ul'
+            }[type] || 'bi-dash';
+        }
+
+        function initValidation() {
+            $('form').removeData('validator');
+            $('form').removeData('unobtrusiveValidation');
+            $.validator.unobtrusive.parse('form');
+        }
+
+        function initDropdowns() {
+            document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+                new bootstrap.Dropdown(toggle, {
+                    autoClose: true,
+                    boundary: 'clippingParents'
+                });
+            });
+        }
+
+        function toggleSettings(questionItem) {
+            questionItem.classList.toggle('settings-expanded');
+        }
+    </script>
+
+    <style>
+        .question-item {
+            border-radius: 0.5rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+            .question-item:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+            }
+
+        .question-title {
+            font-size: 1.1rem;
+            font-weight: 500;
+            padding: 0.75rem 1rem;
+            border: 2px solid #dee2e6;
+            border-radius: 0.5rem;
+        }
+
+            .question-title:focus {
+                border-color: #86b7fe;
+                box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+            }
+
+        .option-input {
+            border: none;
+            border-bottom: 1px solid #dee2e6;
+            margin-left: 0.5rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+            .option-input:focus {
+                box-shadow: none;
+                border-color: #86b7fe;
+            }
+
+        .form-check {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .dropdown-menu {
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        }
+
+        .dropdown-item {
+            border-radius: 0.25rem;
+            padding: 0.5rem 1rem;
+            transition: all 0.2s;
+        }
+
+            .dropdown-item:hover {
+                background-color: #f8f9fa;
+            }
+    </style>
+}
+
+@functions {
+    private string GetQuestionIcon(QuestionType type)
+    {
+        return type switch
+        {
+            QuestionType.Text => "bi-input-cursor-text",
+            QuestionType.Paragraph => "bi-textarea-t",
+            QuestionType.Radio => "bi-ui-radios",
+            QuestionType.Checkbox => "bi-ui-checks-grid",
+            QuestionType.Dropdown => "bi-menu-button",
+            QuestionType.YesNo => "bi-toggle-on",
+            _ => "bi-question-circle"
+        };
+    }
+
+    private string GetOptionIcon(QuestionType type)
+    {
+        return type switch
+        {
+            QuestionType.Radio => "bi-circle",
+            QuestionType.Checkbox => "bi-check-square",
+            QuestionType.Dropdown => "bi-caret-down-fill",
+            _ => "bi-circle"
+        };
+    }
+}

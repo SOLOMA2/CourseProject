@@ -1,0 +1,77 @@
+﻿@model IEnumerable<Template>
+
+@if (Model?.Any() == true)
+{
+    foreach (var template in Model)
+    {
+        <div class="col">
+            <div class="card h-100 shadow-sm template-card">
+                @if (!string.IsNullOrEmpty(template.ImagePath))
+                {
+                    <img src="@template.ImagePath" class="card-img-top" alt="@template.Title">
+                }
+                @if (template.CreatedAt > DateTime.Now.AddDays(-3))
+                {
+                    <span class="badge bg-success badge-new">Новый</span>
+                }
+                <div class="card-body">
+                    <h5 class="card-title">@template.Title</h5>
+                    <p class="card-text text-muted">@template.Description</p>
+
+                    <div class="d-flex gap-2 mb-3">
+                        @if (template.Tags?.Any() == true)
+                        {
+                            foreach (var tag in template.Tags.Take(3))
+                            {
+                                <span class="badge bg-info">@tag.Tag.Name</span>
+                            }
+                        }
+                    </div>
+
+                    <div class="d-flex justify-content-between small text-muted">
+                        <div>
+                            <i class="bi bi-person stats-icon"></i>
+                            @template.Author?.UserName
+                        </div>
+                        <div>
+                            <i class="bi bi-calendar stats-icon"></i>
+                            @template.CreatedAt.ToString("dd.MM.yyyy")
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent d-flex justify-content-between" data-template-id="@template.Id">
+                    <div class="text-muted small">
+                        <i class="bi bi-eye stats-icon"></i>
+                        <span class="view-count">@template.Views.Count</span>
+                        @if (User.Identity.IsAuthenticated)
+                        {
+                            <i class="bi bi-heart stats-icon ms-2 like-button
+               @(template.IsLikedByCurrentUser ? "text-danger bi-heart-fill" : "bi-heart")"
+                               data-template-id="@template.Id"></i>
+                        }
+                        else
+                        {
+                            <i class="bi bi-heart stats-icon ms-2"
+                               title="Войдите, чтобы поставить лайк"
+                               onclick="window.location.href='/Account/Login'"></i>
+                        }
+                        <span class="like-count">@template.Likes.Count</span>
+                    </div>
+                    <a asp-action="UserAnswer" asp-controller="TemplateAnswer"
+                       asp-route-templateId="@template.Id"
+                       class="btn btn-outline-primary btn-sm">
+                        Открыть <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    }
+}
+else
+{
+    <div class="col-12">
+        <div class="alert alert-info">
+            Шаблоны не найдены
+        </div>
+    </div>
+}
