@@ -1,0 +1,368 @@
+﻿@model UserProfileVМ
+@{
+    ViewData["Title"] = "Личный кабинет";
+}
+
+<div class="container py-3">
+    <!-- Заголовок профиля -->
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <div class="avatar-placeholder bg-primary bg-opacity-10 rounded-circle p-3">
+            <i class="bi bi-person-circle text-primary fs-2"></i>
+        </div>
+        <div>
+            <h1 class="fw-bold mb-1">@Model.User.UserName</h1>
+            <div class="d-flex gap-2 text-muted">
+                <span class="badge bg-primary bg-opacity-10 text-primary">
+                    <i class="bi bi-file-earmark-text me-1"></i>
+                    Шаблонов: @Model.Templates.Count
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Панель управления -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-bottom">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <h3 class="fw-semibold mb-0">Мои шаблоны</h3>
+                    <div id="selectedCounter" class="selection-counter fade-in">
+                        <i class="bi bi-check2-circle me-2"></i>
+                        <span class="count">0</span> выбрано
+                    </div>
+                </div>
+                <!-- Исправленная секция кнопок управления -->
+                <div class="d-flex gap-2 align-items-center">
+                    <a asp-controller="Template" asp-action="Create"
+                       class="btn btn-primary d-flex align-items-center gap-2">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>Создать</span>
+                    </a>
+
+                    <!-- Кнопка редактирования -->
+                    <a asp-controller="Template" asp-action="Edit"
+                       class="btn btn-outline-primary"
+                       id="editSelected"
+                       disabled>
+                        <i class="bi bi-pencil-square"></i>
+                    </a>
+
+                    <!-- Форма удаления -->
+                    <form id="deleteForm" asp-action="DeleteTemplates" method="post">
+                        <input type="hidden" name="templateIds" id="hiddenTemplateIds" />
+                        @Html.AntiForgeryToken()
+                        <button type="button"
+                                class="btn btn-outline-danger delete-template"
+                                id="deleteSelected"
+                                disabled
+                                data-bs-toggle="modal"
+                                data-bs-target="#deleteModal">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таблица -->
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" class="form-check-input" id="selectAll">
+                            </th>
+                            <th>Название</th>
+                            <th class="text-center">Категория</th>
+                            <th class="text-center">Создан</th>
+                            <th class="text-center">Просмотры</th>
+                            <th class="text-center">Лайки</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var template in Model.Templates)
+                        {
+                            <tr data-id="@template.Id">
+                                <td>
+                                    <input type="checkbox" class="form-check-input item-checkbox">
+                                </td>
+                                <td>
+                                    <a asp-action="UserAnswer"
+                                       asp-controller="TemplateAnswer"
+                                       asp-route-templateId="@template.Id"
+                                       class="text-decoration-none text-dark">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="icon-wrapper bg-primary bg-opacity-10 p-2 rounded">
+                                                <i class="bi bi-file-earmark-text text-primary"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-medium">@template.Title</div>
+                                                @if (!string.IsNullOrEmpty(template.Description))
+                                                {
+                                                    <div class="text-muted small mt-1">@template.Description</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </a>
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary">
+                                        @template.Topic?.Name
+                                    </span>
+                                </td>
+                                <td class="text-center small">@template.CreatedAt.ToString("d MMM yyyy")</td>
+                                <td class="text-center">
+                                    <i class="bi bi-eye me-1"></i>
+                                    <span class="fw-medium">@template.ViewsCount</span>
+                                </td>
+                                <td class="text-center">
+                                    <i class="bi bi-heart me-1"></i>
+                                    <span class="fw-medium">@template.LikesCount</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="bg-danger bg-opacity-10 rounded-circle p-2">
+                        <i class="bi bi-trash3 text-danger fs-5"></i>
+                    </div>
+                    <h5 class="modal-title fw-semibold mb-0">Подтверждение удаления</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-4">
+                <div class="d-flex align-items-start gap-3">
+                    <div class="bg-danger bg-opacity-10 rounded-circle p-3 flex-shrink-0">
+                        <i class="bi bi-exclamation-triangle-fill text-danger fs-3"></i>
+                    </div>
+                    <div>
+                        <p class="mb-2 fw-medium">
+                            Вы уверены, что хотите удалить
+                            <span class="text-danger count-badge">
+                                <i class="bi bi-files-alt me-1"></i>
+                                <span id="selectedCount">0</span> шаблонов
+                            </span>?
+                        </p>
+                        <div class="text-muted small">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Все связанные данные будут безвозвратно удалены
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button"
+                        class="btn btn-secondary px-4 rounded-3"
+                        data-bs-dismiss="modal">
+                    Отмена
+                </button>
+                <button type="button"
+                        class="btn btn-danger px-4 rounded-3"
+                        id="confirmDelete">
+                    <i class="bi bi-trash3 me-2"></i>
+                    Удалить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .avatar-placeholder {
+            width: 64px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .selection-counter {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #6c757d;
+            padding: 6px 12px;
+            border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+            .selection-counter i {
+                color: #0d6efd;
+            }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @@keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .btn-outline-primary, .btn-outline-danger {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+            .btn-outline-primary:hover {
+                background: #0d6efd;
+                color: white;
+            }
+
+            .btn-outline-danger:hover {
+                background: #dc3545;
+                color: white;
+            }
+
+        .table tbody tr {
+            transition: background-color 0.2s ease;
+        }
+
+            .table tbody tr:hover {
+                background-color: #f8fafc;
+            }
+
+        .icon-wrapper {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            border-radius: 16px;
+        }
+
+        .count-badge {
+            background: rgba(220,53,69,0.1);
+            padding: 4px 8px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .modal-footer .btn {
+            transition: all 0.2s ease;
+            min-width: 100px;
+        }
+
+        .modal-footer .btn-danger:hover {
+            background: #bb2d3b;
+            transform: translateY(-1px);
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Функция обновления интерфейса
+            const updateUI = () => {
+                const selected = document.querySelectorAll('.item-checkbox:checked').length;
+                const counter = document.getElementById('selectedCounter');
+                const countElement = counter?.querySelector('.count');
+
+                // Обновление счетчика
+                if (countElement && counter) {
+                    countElement.textContent = selected;
+                    counter.style.display = selected > 0 ? 'flex' : 'none';
+                }
+
+                // Обновление кнопок
+                const editButton = document.getElementById('editSelected');
+                const deleteButton = document.getElementById('deleteSelected');
+
+                if (editButton) {
+                    editButton.disabled = selected !== 1;
+                    if (selected === 1) {
+                        const templateId = document.querySelector('.item-checkbox:checked')
+                            .closest('tr').dataset.id;
+                        editButton.href = `@Url.Action("Edit", "Template")/${templateId}`;
+                    }
+                }
+
+                if (deleteButton) {
+                    deleteButton.disabled = selected === 0;
+                }
+            };
+
+            // Обработчик для "Выбрать все"
+            const selectAll = document.getElementById('selectAll');
+            if (selectAll) {
+                selectAll.addEventListener('change', function() {
+                    document.querySelectorAll('.item-checkbox').forEach(cb => {
+                        cb.checked = this.checked;
+                    });
+                    updateUI();
+                });
+            }
+
+            // Обработчики для чекбоксов
+            document.querySelectorAll('.item-checkbox').forEach(cb => {
+                cb.addEventListener('change', updateUI);
+            });
+
+            // Обработчик для кнопки удаления
+            document.querySelectorAll('.delete-template').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const selected = document.querySelectorAll('.item-checkbox:checked').length;
+                    const selectedCountElement = document.getElementById('selectedCount');
+
+                    if (selectedCountElement) {
+                        selectedCountElement.textContent = selected > 0 ? selected : 1;
+                    }
+
+                    const deleteModal = document.getElementById('deleteModal');
+                    if (deleteModal) {
+                        const modal = new bootstrap.Modal(deleteModal);
+                        const confirmDelete = document.getElementById('confirmDelete');
+
+                        // Обработчик подтверждения удаления
+                        const handleConfirm = () => {
+                            const ids = Array.from(document.querySelectorAll('.item-checkbox:checked'))
+                                .map(checkbox => parseInt(checkbox.closest('tr').dataset.id));
+
+                            document.getElementById('hiddenTemplateIds').value = ids.join(',');
+                            document.getElementById('deleteForm').submit();
+
+                            modal.hide();
+                            confirmDelete.removeEventListener('click', handleConfirm);
+                        };
+
+                        confirmDelete.addEventListener('click', handleConfirm);
+                        modal.show();
+                    }
+                });
+            });
+
+            // Первоначальное обновление UI
+            updateUI();
+        });
+    </script>
+}

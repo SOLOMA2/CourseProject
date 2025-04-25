@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CourseProject.Migrations
 {
     [DbContext(typeof(AppUserDbContext))]
-    [Migration("20250420123907_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250425155618_FixDeleteDependenciesNew1")]
+    partial class FixDeleteDependenciesNew1
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -105,7 +105,6 @@ namespace CourseProject.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Text")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("UserResponseId")
@@ -145,6 +144,65 @@ namespace CourseProject.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("FormResponses");
+                });
+
+            modelBuilder.Entity("CourseProject.Models.MainModelViews.HelpModel.Comment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AuthorId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TemplateId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorId");
+
+                    b.HasIndex("TemplateId");
+
+                    b.ToTable("Comments");
+                });
+
+            modelBuilder.Entity("CourseProject.Models.MainModelViews.HelpModel.Like", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("LikedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TemplateId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Likes");
                 });
 
             modelBuilder.Entity("CourseProject.Models.MainModelViews.HelpModel.Tag", b =>
@@ -475,12 +533,39 @@ namespace CourseProject.Migrations
                     b.ToTable("Templates");
                 });
 
+            modelBuilder.Entity("View", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("IPAddress")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("TemplateId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ViewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IPAddress");
+
+                    b.HasIndex("TemplateId");
+
+                    b.ToTable("Views");
+                });
+
             modelBuilder.Entity("CourseProject.Models.MainModelViews.Answer", b =>
                 {
                     b.HasOne("CourseProject.Models.MainModelViews.Question", "Question")
-                        .WithMany()
+                        .WithMany("Answers")
                         .HasForeignKey("QuestionId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
 
                     b.HasOne("CourseProject.Models.MainModelViews.FormResponse", "UserResponse")
@@ -506,6 +591,44 @@ namespace CourseProject.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Template");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("CourseProject.Models.MainModelViews.HelpModel.Comment", b =>
+                {
+                    b.HasOne("CourseProject.Models.AppUser", "Author")
+                        .WithMany("Comments")
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Template", "Template")
+                        .WithMany("Comments")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Author");
+
+                    b.Navigation("Template");
+                });
+
+            modelBuilder.Entity("CourseProject.Models.MainModelViews.HelpModel.Like", b =>
+                {
+                    b.HasOne("Template", "Template")
+                        .WithMany("Likes")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CourseProject.Models.AppUser", "User")
+                        .WithMany("Likes")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Template");
@@ -616,7 +739,7 @@ namespace CourseProject.Migrations
                     b.HasOne("CourseProject.Models.MainModelViews.QuestionOption", "QuestionOption")
                         .WithMany("SelectedOptions")
                         .HasForeignKey("QuestionOptionId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
 
                     b.Navigation("Answer");
@@ -643,8 +766,23 @@ namespace CourseProject.Migrations
                     b.Navigation("Topic");
                 });
 
+            modelBuilder.Entity("View", b =>
+                {
+                    b.HasOne("Template", "Template")
+                        .WithMany("Views")
+                        .HasForeignKey("TemplateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Template");
+                });
+
             modelBuilder.Entity("CourseProject.Models.AppUser", b =>
                 {
+                    b.Navigation("Comments");
+
+                    b.Navigation("Likes");
+
                     b.Navigation("Templates");
                 });
 
@@ -670,6 +808,8 @@ namespace CourseProject.Migrations
 
             modelBuilder.Entity("CourseProject.Models.MainModelViews.Question", b =>
                 {
+                    b.Navigation("Answers");
+
                     b.Navigation("Options");
                 });
 
@@ -680,11 +820,17 @@ namespace CourseProject.Migrations
 
             modelBuilder.Entity("Template", b =>
                 {
+                    b.Navigation("Comments");
+
+                    b.Navigation("Likes");
+
                     b.Navigation("Questions");
 
                     b.Navigation("Responses");
 
                     b.Navigation("Tags");
+
+                    b.Navigation("Views");
                 });
 #pragma warning restore 612, 618
         }

@@ -32,6 +32,7 @@ namespace CourseProject.Models.MainModelViews
         [ForeignKey("TemplateId")]
         public Template Template { get; set; }
         public List<QuestionOption> Options { get; set; } = new();
+        public List<Answer> Answers { get; set; } = new List<Answer>();
 
 
     }

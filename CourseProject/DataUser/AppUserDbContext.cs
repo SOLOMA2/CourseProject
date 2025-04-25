@@ -118,9 +118,9 @@ namespace CourseProject.DataUser
             // Настройка Answer
             modelBuilder.Entity<Answer>()
                 .HasOne(a => a.Question)
-                .WithMany()
+                .WithMany(q => q.Answers)
                 .HasForeignKey(a => a.QuestionId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.ClientCascade);
 
             modelBuilder.Entity<Answer>()
                 .HasMany(a => a.SelectedOptions)
@@ -133,7 +133,7 @@ namespace CourseProject.DataUser
                 .HasOne(so => so.QuestionOption)
                 .WithMany(qo => qo.SelectedOptions)
                 .HasForeignKey(so => so.QuestionOptionId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.ClientCascade);
         }
     }
 }

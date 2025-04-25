@@ -560,9 +560,9 @@ namespace CourseProject.Migrations
             modelBuilder.Entity("CourseProject.Models.MainModelViews.Answer", b =>
                 {
                     b.HasOne("CourseProject.Models.MainModelViews.Question", "Question")
-                        .WithMany()
+                        .WithMany("Answers")
                         .HasForeignKey("QuestionId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
 
                     b.HasOne("CourseProject.Models.MainModelViews.FormResponse", "UserResponse")
@@ -736,7 +736,7 @@ namespace CourseProject.Migrations
                     b.HasOne("CourseProject.Models.MainModelViews.QuestionOption", "QuestionOption")
                         .WithMany("SelectedOptions")
                         .HasForeignKey("QuestionOptionId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.ClientCascade)
                         .IsRequired();
 
                     b.Navigation("Answer");
@@ -805,6 +805,8 @@ namespace CourseProject.Migrations
 
             modelBuilder.Entity("CourseProject.Models.MainModelViews.Question", b =>
                 {
+                    b.Navigation("Answers");
+
                     b.Navigation("Options");
                 });
 

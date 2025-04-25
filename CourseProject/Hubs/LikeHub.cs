@@ -1,5 +1,4 @@
-﻿// Hubs/LikeHub.cs
-using CourseProject.DataUser;
+﻿using CourseProject.DataUser;
 using CourseProject.Models.MainModelViews.HelpModel;
 using CourseProject.Models;
 using Microsoft.AspNetCore.Identity;

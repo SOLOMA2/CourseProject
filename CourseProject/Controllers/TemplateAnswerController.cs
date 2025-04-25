@@ -161,7 +161,7 @@ namespace CourseProject.Controllers
             {
                 Content = content,
                 TemplateId = templateId,
-                AuthorId = user.Id,
+                AuthorId = user.Id, 
                 CreatedAt = DateTime.UtcNow
             };
 

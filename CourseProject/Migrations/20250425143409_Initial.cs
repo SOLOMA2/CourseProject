@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CourseProject.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialSchema : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -195,8 +195,7 @@ namespace CourseProject.Migrations
                     IsPublic = table.Column<bool>(type: "bit", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ImagePath = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: false),
-                    TypeConfig = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ImagePath = table.Column<string>(type: "nvarchar(255)", maxLength: 255, nullable: true),
                     AuthorId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     TopicId = table.Column<int>(type: "int", nullable: false)
                 },
@@ -215,6 +214,88 @@ namespace CourseProject.Migrations
                         principalTable: "Topics",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Comments",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Content = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    TemplateId = table.Column<int>(type: "int", nullable: false),
+                    AuthorId = table.Column<string>(type: "nvarchar(450)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Comments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Comments_AspNetUsers_AuthorId",
+                        column: x => x.AuthorId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Comments_Templates_TemplateId",
+                        column: x => x.TemplateId,
+                        principalTable: "Templates",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FormResponses",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    TemplateId = table.Column<int>(type: "int", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FormResponses", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FormResponses_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_FormResponses_Templates_TemplateId",
+                        column: x => x.TemplateId,
+                        principalTable: "Templates",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Likes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    TemplateId = table.Column<int>(type: "int", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    LikedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Likes", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Likes_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Likes_Templates_TemplateId",
+                        column: x => x.TemplateId,
+                        principalTable: "Templates",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -270,6 +351,60 @@ namespace CourseProject.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Views",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ViewedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    IPAddress = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    TemplateId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Views", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Views_Templates_TemplateId",
+                        column: x => x.TemplateId,
+                        principalTable: "Templates",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Answers",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserResponseId = table.Column<int>(type: "int", nullable: false),
+                    QuestionId = table.Column<int>(type: "int", nullable: false),
+                    Text = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    QuestionId1 = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Answers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Answers_FormResponses_UserResponseId",
+                        column: x => x.UserResponseId,
+                        principalTable: "FormResponses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Answers_Questions_QuestionId",
+                        column: x => x.QuestionId,
+                        principalTable: "Questions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Answers_Questions_QuestionId1",
+                        column: x => x.QuestionId1,
+                        principalTable: "Questions",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "QuestionOptions",
                 columns: table => new
                 {
@@ -288,6 +423,47 @@ namespace CourseProject.Migrations
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
+
+            migrationBuilder.CreateTable(
+                name: "SelectedOptions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    AnswerId = table.Column<int>(type: "int", nullable: false),
+                    QuestionOptionId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_SelectedOptions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_SelectedOptions_Answers_AnswerId",
+                        column: x => x.AnswerId,
+                        principalTable: "Answers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_SelectedOptions_QuestionOptions_QuestionOptionId",
+                        column: x => x.QuestionOptionId,
+                        principalTable: "QuestionOptions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Answers_QuestionId",
+                table: "Answers",
+                column: "QuestionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Answers_QuestionId1",
+                table: "Answers",
+                column: "QuestionId1");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Answers_UserResponseId",
+                table: "Answers",
+                column: "UserResponseId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -329,6 +505,36 @@ namespace CourseProject.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Comments_AuthorId",
+                table: "Comments",
+                column: "AuthorId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Comments_TemplateId",
+                table: "Comments",
+                column: "TemplateId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FormResponses_TemplateId",
+                table: "FormResponses",
+                column: "TemplateId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FormResponses_UserId",
+                table: "FormResponses",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Likes_TemplateId",
+                table: "Likes",
+                column: "TemplateId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Likes_UserId",
+                table: "Likes",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_QuestionOptions_QuestionId",
                 table: "QuestionOptions",
                 column: "QuestionId");
@@ -337,6 +543,16 @@ namespace CourseProject.Migrations
                 name: "IX_Questions_TemplateId",
                 table: "Questions",
                 column: "TemplateId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SelectedOptions_AnswerId",
+                table: "SelectedOptions",
+                column: "AnswerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_SelectedOptions_QuestionOptionId",
+                table: "SelectedOptions",
+                column: "QuestionOptionId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Templates_AuthorId",
@@ -352,6 +568,16 @@ namespace CourseProject.Migrations
                 name: "IX_TemplateTags_TagId",
                 table: "TemplateTags",
                 column: "TagId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Views_IPAddress",
+                table: "Views",
+                column: "IPAddress");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Views_TemplateId",
+                table: "Views",
+                column: "TemplateId");
         }
 
         /// <inheritdoc />
@@ -373,19 +599,37 @@ namespace CourseProject.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
-                name: "QuestionOptions");
+                name: "Comments");
+
+            migrationBuilder.DropTable(
+                name: "Likes");
+
+            migrationBuilder.DropTable(
+                name: "SelectedOptions");
 
             migrationBuilder.DropTable(
                 name: "TemplateTags");
 
             migrationBuilder.DropTable(
+                name: "Views");
+
+            migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "Questions");
+                name: "Answers");
+
+            migrationBuilder.DropTable(
+                name: "QuestionOptions");
 
             migrationBuilder.DropTable(
                 name: "Tags");
+
+            migrationBuilder.DropTable(
+                name: "FormResponses");
+
+            migrationBuilder.DropTable(
+                name: "Questions");
 
             migrationBuilder.DropTable(
                 name: "Templates");

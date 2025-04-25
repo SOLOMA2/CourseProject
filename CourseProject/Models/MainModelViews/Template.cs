@@ -8,7 +8,7 @@ using System.ComponentModel.DataAnnotations;
 public class Template
 {
     [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)] // Добавьте эту строку
+    [DatabaseGenerated(DatabaseGeneratedOption.Identity)] 
     public int Id { get; set; }
 
     [Required(ErrorMessage = "Название обязательно")]
@@ -16,7 +16,7 @@ public class Template
     public string Title { get; set; }
 
     [StringLength(2000)]
-    public string Description { get; set; } // Не обязательно
+    public string Description { get; set; }
 
     public TemplateType Type { get; set; }
     public bool IsPublic { get; set; }
@@ -24,7 +24,7 @@ public class Template
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     [StringLength(255)]
-    public string? ImagePath { get; set; } // Сделать необязательным
+    public string? ImagePath { get; set; }
 
     [NotMapped]
     public IFormFile ImageFile { get; set; }
@@ -32,13 +32,13 @@ public class Template
     [ValidateNever]
     public string AuthorId { get; set; }
 
-    [ValidateNever] // Отключить валидацию
+    [ValidateNever]
     public AppUser Author { get; set; }
 
     [Required(ErrorMessage = "Выберите категорию")]
     public int TopicId { get; set; }
 
-    [ValidateNever] // Отключить валидацию
+    [ValidateNever] 
     public Topic Topic { get; set; }
 
     public List<Question> Questions { get; set; } = new List<Question>();
@@ -58,8 +58,6 @@ public class Template
     [NotMapped]
     public int ViewsCount => Views?.Count ?? 0;
 
-    public List<Comment> Comments { get; set; } = new List<Comment>(); // Добавляем комментарии
-    public int CommentsCount => Comments?.Count ?? 0; // Добавляем счетчик комментариев
-
-
+    public List<Comment> Comments { get; set; } = new List<Comment>();
+    public int CommentsCount => Comments?.Count ?? 0;
 }
