@@ -302,6 +302,7 @@
 </div>
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <partial name="_ValidationScriptsPartial" />
     <script>
         // Конфигурация типов вопросов
@@ -555,14 +556,11 @@
         }
 
         // Обновление индексов вопросов
-        function updateQuestionIndexes() {
+                function updateQuestionIndexes() {
             document.querySelectorAll('.question-item').forEach((item, index) => {
-                item.dataset.questionIndex = index;
-                item.querySelectorAll('[name*="Questions["]').forEach(el => {
-                    el.name = el.name.replace(/\[\d+\]/g, `[${index}]`);
-                });
+                const orderInput = item.querySelector('.question-order');
+                if (orderInput) orderInput.value = index;
             });
-            questionCounter = document.querySelectorAll('.question-item').length;
         }
 
         // Удаление вопроса
@@ -572,14 +570,13 @@
         }
 
         // Drag and drop
-        function initSortable() {
+                function initSortable() {
             new Sortable(document.getElementById('questionsContainer'), {
                 handle: '.card-header',
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                onEnd: () => {
+                animation: 0,
+                ghostClass: '',
+                onEnd: function(evt) {
                     updateQuestionIndexes();
-                    initDropdowns();
                 }
             });
         }
@@ -845,6 +842,14 @@
             .dropdown-item:hover {
                 background-color: #f8f9fa;
             }
+
+        .question-item {
+            cursor: move;
+        }
+
+        .card-header {
+            cursor: move !important;
+        }
     </style>
 }
 
