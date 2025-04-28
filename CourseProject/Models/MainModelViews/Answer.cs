@@ -5,8 +5,6 @@ namespace CourseProject.Models.MainModelViews
 {
     public class Answer
     {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [Required]
@@ -15,7 +13,7 @@ namespace CourseProject.Models.MainModelViews
         [Required]
         public int QuestionId { get; set; }
 
-        public string? Text { get; set; } // Nullable property
+        public string? Text { get; set; } 
 
         [NotMapped]
         public List<int> SelectedOptionIds { get; set; } = new();

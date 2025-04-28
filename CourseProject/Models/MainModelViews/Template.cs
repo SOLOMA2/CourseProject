@@ -7,8 +7,6 @@ using System.ComponentModel.DataAnnotations;
 
 public class Template
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)] 
     public int Id { get; set; }
 
     [Required(ErrorMessage = "Название обязательно")]
@@ -47,17 +45,15 @@ public class Template
 
     public List<Like> Likes { get; set; } = new List<Like>();
 
-    [NotMapped]
-    public int LikesCount => Likes?.Count ?? 0;
+    public int LikesCount { get; set; }
 
     [NotMapped]
     public bool IsLikedByCurrentUser { get; set; }
 
     public List<View> Views { get; set; } = new List<View>();
 
-    [NotMapped]
-    public int ViewsCount => Views?.Count ?? 0;
+    public int ViewsCount { get; set; }
 
     public List<Comment> Comments { get; set; } = new List<Comment>();
-    public int CommentsCount => Comments?.Count ?? 0;
+    public int CommentsCount { get; set; }
 }

@@ -1,0 +1,365 @@
+﻿@model List<Template>
+@using CourseProject.Models.MainModelViews
+@{
+    ViewData["Title"] = "Аналитика ответов";
+}
+
+<div class="container-fluid px-4">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Аналитика ответов</h1>
+        <div class="d-none d-sm-inline-block">
+            <span class="badge bg-primary p-2">
+                Всего шаблонов: @Model.Count
+            </span>
+        </div>
+    </div>
+
+    @if (Model.Any())
+    {
+        <div class="row">
+            @foreach (var template in Model)
+            {
+                <div class="col-12 mb-4">
+                    <div class="card shadow border-0">
+                        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                            <div>
+                                <h5 class="m-0 font-weight-bold text-primary">@template.Title</h5>
+                                <small class="text-muted">@template.Description</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="badge bg-info">
+                                    <i class="fas fa-question-circle me-1"></i> @template.Questions.Count
+                                </span>
+                                <span class="badge bg-success">
+                                    <i class="fas fa-reply me-1"></i> @template.Responses.Count
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="card-body p-0">
+                            <div class="p-4">
+                                <!-- Статистика -->
+                                <div class="row mb-4 g-4">
+                                    <div class="col-xl-3 col-md-6">
+                                        <div class="card border-left-primary h-100">
+                                            <div class="card-body">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="me-3">
+                                                        <i class="fas fa-users fa-2x text-gray-300"></i>
+                                                    </div>
+                                                    <div>
+                                                        <div class="text-xs font-weight-bold text-primary mb-1">
+                                                            Уникальных пользователей
+                                                        </div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                            @template.Responses.GroupBy(r => r.UserId).Count()
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-xl-3 col-md-6">
+                                        <div class="card border-left-success h-100">
+                                            <div class="card-body">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="me-3">
+                                                        <i class="fas fa-clock fa-2x text-gray-300"></i>
+                                                    </div>
+                                                    <div>
+                                                        <div class="text-xs font-weight-bold text-success mb-1">
+                                                            Последний ответ
+                                                        </div>
+                                                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                            @(template.Responses.LastOrDefault()?.CreatedAt.ToString("dd.MM.yyyy HH:mm") ?? "Нет данных")
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Агрегированная статистика для вопросов -->
+                                    @foreach (var question in template.Questions.Where(q => q.ShowInTable))
+                                    {
+                                        <div class="col-xl-3 col-md-6">
+                                            <div class="card h-100">
+                                                <div class="card-body">
+                                                    <h6 class="font-weight-bold text-truncate">@question.Text</h6>
+                                                    <div class="text-xs text-muted mb-2">@GetQuestionTypeName(question.Type)</div>
+                                                    @if (question.Type == QuestionType.Text || question.Type == QuestionType.Paragraph)
+                                                    {
+                                                        <div class="text-primary">
+                                                            <i class="fas fa-comment me-1"></i>
+                                                            Ответов: @template.Responses.SelectMany(r => r.Answers).Count(a => a.QuestionId == question.Id)
+                                                        </div>
+                                                    }
+                                                    else if (question.Type == QuestionType.YesNo)
+                                                    {
+                                                        var yesCount = GetYesNoCount(question, true);
+                                                        var noCount = GetYesNoCount(question, false);
+                                                        <div class="progress mb-2" style="height: 20px;">
+                                                            <div class="progress-bar bg-success" style="width: @(GetPercentage(yesCount, yesCount + noCount))%">
+                                                                Да: @yesCount
+                                                            </div>
+                                                            <div class="progress-bar bg-danger" style="width: @(GetPercentage(noCount, yesCount + noCount))%">
+                                                                Нет: @noCount
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                    else if (question.Type == QuestionType.Checkbox || question.Type == QuestionType.Radio || question.Type == QuestionType.Dropdown)
+                                                    {
+                                                        var optionsStats = GetOptionsStatistics(question);
+                                                        <div class="chart-pie pb-2">
+                                                            @foreach (var option in optionsStats.OrderByDescending(o => o.Count).Take(3))
+                                                            {
+                                                                <div class="d-flex align-items-center mb-1">
+                                                                    <div class="text-truncate" style="max-width: 120px;">@option.Text</div>
+                                                                    <div class="ms-auto text-gray-600">@option.Count (@option.Percentage%)</div>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+
+                                <!-- Таблица ответов -->
+                                <div class="card shadow mb-4">
+                                    <div class="card-header bg-white py-3">
+                                        <h6 class="m-0 font-weight-bold text-primary">
+                                            <i class="fas fa-table me-1"></i> Детальные ответы
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-bordered table-hover" width="100%">
+                                                <thead class="bg-gray-100">
+                                                    <tr>
+                                                        <th class="text-nowrap">Пользователь</th>
+                                                        <th class="text-nowrap">Дата</th>
+                                                        @foreach (var question in template.Questions.OrderBy(q => q.Order))
+                                                        {
+                                                            <th class="text-nowrap">
+                                                                <div class="d-flex flex-column">
+                                                                    <div class="d-flex align-items-center gap-1">
+                                                                        <i class="@GetQuestionIcon(question.Type) text-primary"></i>
+                                                                        <span>@question.Text</span>
+                                                                    </div>
+                                                                    <small class="text-muted">@GetQuestionTypeName(question.Type)</small>
+                                                                </div>
+                                                            </th>
+                                                        }
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach (var response in template.Responses.OrderByDescending(r => r.CreatedAt))
+                                                    {
+                                                        <tr>
+                                                            <td class="position-sticky start-0 bg-white">
+                                                                <div class="d-flex align-items-center gap-2">
+                                                                    <div class="avatar-sm">
+                                                                        <div class="avatar-title bg-light rounded-circle">
+                                                                            @response.User.UserName[0]
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <div>@response.User.UserName</div>
+                                                                        <small class="text-muted">@response.User.Email</small>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td class="text-nowrap">
+                                                                @response.CreatedAt.ToString("dd.MM.yy HH:mm")
+                                                            </td>
+                                                            @foreach (var question in template.Questions.OrderBy(q => q.Order))
+                                                            {
+                                                                <td>
+                                                                    @{
+                                                                        var answer = response.Answers.FirstOrDefault(a => a.QuestionId == question.Id);
+                                                                        @if (answer != null)
+                                                                        {
+                                                                            @switch (question.Type)
+                                                                            {
+                                                                                case QuestionType.Text:
+                                                                                case QuestionType.Paragraph:
+                                                                                    <div class="d-flex gap-1">
+                                                                                        <span class="text-truncate" style="max-width: 200px">@answer.Text</span>
+                                                                                        <button class="btn btn-link p-0"
+                                                                                                data-bs-toggle="popover"
+                                                                                                data-bs-content="@answer.Text">
+                                                                                            <i class="fas fa-expand-alt text-muted"></i>
+                                                                                        </button>
+                                                                                    </div>
+                                                                                    break;
+                                                                                case QuestionType.Radio:
+                                                                                case QuestionType.Dropdown:
+                                                                                    var option = answer.SelectedOptions.FirstOrDefault()?.QuestionOption;
+                                                                                    <span class="badge bg-primary">@option?.Text</span>
+                                                                                    break;
+                                                                                case QuestionType.Checkbox:
+                                                                                    var options = answer.SelectedOptions.Select(so => so.QuestionOption.Text);
+                                                                                    <div class="d-flex flex-wrap gap-1">
+                                                                                        @foreach (var opt in options)
+                                                                                        {
+                                                                                            <span class="badge bg-primary">@opt</span>
+                                                                                        }
+                                                                                    </div>
+                                                                                    break;
+                                                                                case QuestionType.YesNo:
+                                                                                    <span class="badge @(answer.Text == "true" ? "bg-success" : "bg-danger")">
+                                                                                        @(answer.Text == "true" ? "Да" : "Нет")
+                                                                                    </span>
+                                                                                    break;
+                                                                            }
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span class="text-muted">—</span>
+                                                                        }
+                                                                    }
+                                                                </td>
+                                                            }
+                                                        </tr>
+                                                    }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="card shadow border-0">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-file-alt fa-4x text-gray-300 mb-3"></i>
+                <h5 class="text-gray-800">У вас пока нет созданных шаблонов</h5>
+                <p class="text-muted">Создайте первый шаблон, чтобы начать собирать ответы</p>
+                <a href="@Url.Action("Create", "Templates")" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i> Создать шаблон
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@section Styles {
+    <style>
+        .avatar-sm {
+            width: 40px;
+            height: 40px;
+        }
+
+        .avatar-title {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            font-weight: 600;
+        }
+
+        .chart-pie {
+            position: relative;
+            height: 100px;
+        }
+
+        .table thead th {
+            white-space: nowrap;
+            background-color: #f8f9fa !important;
+        }
+
+        .table tbody td {
+            vertical-align: middle;
+        }
+
+        .position-sticky {
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Инициализация тултипов и поповеров
+            const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+            popoverTriggerList.map(t => new bootstrap.Popover(t, {
+                trigger: 'focus',
+                container: 'body'
+            }))
+        })
+    </script>
+}
+
+@functions {
+    private string GetQuestionIcon(QuestionType type)
+    {
+        return type switch
+        {
+            QuestionType.Text => "fas fa-font",
+            QuestionType.Paragraph => "fas fa-align-left",
+            QuestionType.Radio => "fas fa-dot-circle",
+            QuestionType.Checkbox => "fas fa-check-square",
+            QuestionType.Dropdown => "fas fa-caret-square-down",
+            QuestionType.YesNo => "fas fa-balance-scale",
+            _ => "fas fa-question"
+        };
+    }
+
+    private int GetYesNoCount(Question question, bool isYes)
+    {
+        return Model.SelectMany(t => t.Responses)
+            .SelectMany(r => r.Answers)
+            .Where(a => a.QuestionId == question.Id && a.Text == isYes.ToString())
+            .Count();
+    }
+
+    private List<OptionStat> GetOptionsStatistics(Question question)
+    {
+        return question.Options.Select(option => new OptionStat
+            {
+                Text = option.Text,
+                Count = option.SelectedOptions.Count,
+                Percentage = GetPercentage(option.SelectedOptions.Count, question.Answers.Count)
+            }).ToList();
+    }
+
+    private double GetPercentage(int part, int total)
+    {
+        return total == 0 ? 0 : Math.Round((double)part / total * 100, 1);
+    }
+
+    private class OptionStat
+    {
+        public string Text { get; set; }
+        public int Count { get; set; }
+        public double Percentage { get; set; }
+    }
+
+    private string GetQuestionTypeName(QuestionType type)
+    {
+        return type switch
+        {
+            QuestionType.Text => "Текстовый ответ",
+            QuestionType.Paragraph => "Развернутый ответ",
+            QuestionType.Radio => "Один вариант",
+            QuestionType.Checkbox => "Множественный выбор",
+            QuestionType.Dropdown => "Выпадающий список",
+            QuestionType.YesNo => "Да/Нет",
+            _ => "Неизвестный тип"
+        };
+    }
+}

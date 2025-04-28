@@ -4,14 +4,14 @@ namespace CourseProject.Models.MainModelViews.HelpModel
 {
     public class Like
     {
-        public int Id { get; set; } // Первичный ключ
+        public int Id { get; set; } 
 
         public int TemplateId { get; set; }
         [ValidateNever]
 
         public Template Template { get; set; }
 
-        public string UserId { get; set; } // Идентификатор пользователя (AppUser)
+        public string UserId { get; set; } 
         [ValidateNever]
 
         public AppUser User { get; set; }

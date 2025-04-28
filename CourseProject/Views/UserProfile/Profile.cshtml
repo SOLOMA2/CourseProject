@@ -28,7 +28,7 @@
                     <h3 class="fw-semibold mb-0">Мои шаблоны</h3>
                     <div id="selectedCounter" class="selection-counter fade-in">
                         <i class="bi bi-check2-circle me-2"></i>
-                        <span class="count">0</span> выбрано
+                        <span class="count">0 </span> выбрано
                     </div>
                 </div>
                 <!-- Исправленная секция кнопок управления -->
@@ -40,7 +40,8 @@
                     </a>
 
                     <!-- Кнопка редактирования -->
-                    <a asp-controller="Template" asp-action="Edit"
+                    <a asp-controller="CreateTemplate" asp-action="Edit"
+                       asp-route-templateId="Temtemplate.Id"
                        class="btn btn-outline-primary"
                        id="editSelected"
                        disabled>
@@ -302,7 +303,7 @@
                     if (selected === 1) {
                         const templateId = document.querySelector('.item-checkbox:checked')
                             .closest('tr').dataset.id;
-                        editButton.href = `@Url.Action("Edit", "Template")/${templateId}`;
+                        editButton.href = `@Url.Action("Edit", "CreateTemplate")/${templateId}`;
                     }
                 }
 
@@ -343,12 +344,17 @@
                         const modal = new bootstrap.Modal(deleteModal);
                         const confirmDelete = document.getElementById('confirmDelete');
 
-                        // Обработчик подтверждения удаления
+                        // Обработчик подтверждения удаления (исправленная часть)
                         const handleConfirm = () => {
                             const ids = Array.from(document.querySelectorAll('.item-checkbox:checked'))
-                                .map(checkbox => parseInt(checkbox.closest('tr').dataset.id));
+                                .map(checkbox => {
+                                    const tr = checkbox.closest('tr');
+                                    return tr ? tr.dataset.id : null;
+                                })
+                                .filter(id => id !== null)
+                                .join(',');
 
-                            document.getElementById('hiddenTemplateIds').value = ids.join(',');
+                            document.getElementById('hiddenTemplateIds').value = ids;
                             document.getElementById('deleteForm').submit();
 
                             modal.hide();

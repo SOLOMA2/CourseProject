@@ -29,111 +29,176 @@ namespace CourseProject.DataUser
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<Comment>(entity => {
-                entity.HasKey(c => c.Id);
-
-                entity.HasOne(c => c.Template)
-                    .WithMany(t => t.Comments)
-                    .HasForeignKey(c => c.TemplateId)
-                    .OnDelete(DeleteBehavior.Cascade);
-
-                entity.HasOne(c => c.Author)
-                    .WithMany(u => u.Comments)
-                    .HasForeignKey(c => c.AuthorId)
-                    .OnDelete(DeleteBehavior.Restrict);
-            });
-
-            modelBuilder.Entity<View>(entity =>
+            // Глобальное отключение каскадного удаления
+            foreach (var relationship in modelBuilder.Model.GetEntityTypes()
+                .SelectMany(e => e.GetForeignKeys()))
             {
-                entity.HasKey(v => v.Id);
-                entity.HasIndex(v => v.TemplateId);
-                entity.HasIndex(v => v.IPAddress);
+                relationship.DeleteBehavior = DeleteBehavior.Restrict;
+            }
 
-                entity.HasOne(v => v.Template)
-                    .WithMany(t => t.Views)
-                    .HasForeignKey(v => v.TemplateId)
+            // Конфигурация Template
+            modelBuilder.Entity<Template>(entity =>
+            {
+                // Индексы
+                entity.HasIndex(t => t.AuthorId)
+                    .IncludeProperties(t => new { t.Title, t.CreatedAt })
+                    .HasDatabaseName("IX_Templates_AuthorId")
+                    .HasFillFactor(90);
+
+                entity.HasIndex(t => t.TopicId)
+                    .HasDatabaseName("IX_Templates_TopicId");
+
+                entity.HasIndex(t => t.CreatedAt)
+                    .HasDatabaseName("IX_Templates_CreatedAt")
+                    .IsDescending();
+
+                // Связи с явным каскадным удалением
+                entity.HasMany(t => t.Questions)
+                    .WithOne(q => q.Template)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(t => t.Tags)
+                    .WithOne(tt => tt.Template)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(t => t.Likes)
+           .WithOne(l => l.Template)
+           .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(t => t.Views)
+                    .WithOne(v => v.Template)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(t => t.Comments)
+                    .WithOne(c => c.Template)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                // Денормализованные счетчики
+                entity.Property(t => t.LikesCount)
+                    .HasDefaultValue(0)
+                    .ValueGeneratedOnAddOrUpdate();
+
+                entity.Property(t => t.ViewsCount)
+                    .HasDefaultValue(0)
+                    .ValueGeneratedOnAddOrUpdate();
+
+                entity.Property(t => t.CommentsCount)
+                    .HasDefaultValue(0)
+                    .ValueGeneratedOnAddOrUpdate();
+            });
+
+            // Конфигурация Question
+            modelBuilder.Entity<Question>(entity =>
+            {
+                entity.HasIndex(q => q.TemplateId)
+                    .HasDatabaseName("IX_Questions_TemplateId");
+
+                entity.HasIndex(q => q.Order)
+                    .HasDatabaseName("IX_Questions_Order");
+
+                entity.HasMany(q => q.Options)
+                    .WithOne(o => o.Question)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+
+            // Конфигурация Answer
+            modelBuilder.Entity<Answer>(entity =>
+            {
+                entity.HasIndex(a => a.UserResponseId)
+                    .HasDatabaseName("IX_Answers_UserResponseId");
+
+                entity.HasIndex(a => a.QuestionId)
+                    .HasDatabaseName("IX_Answers_QuestionId");
+
+                entity.HasMany(a => a.SelectedOptions)
+                    .WithOne(so => so.Answer)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // Конфигурация FormResponse
+            modelBuilder.Entity<FormResponse>(entity =>
+            {
+                entity.HasIndex(fr => fr.TemplateId)
+                    .HasDatabaseName("IX_FormResponses_TemplateId")
+                    .IncludeProperties(fr => new { fr.UserId, fr.CreatedAt });
+
+                entity.HasIndex(fr => fr.CreatedAt)
+                    .HasDatabaseName("IX_FormResponses_CreatedAt")
+                    .IsDescending();
+            });
+
+            // Конфигурация Like
             modelBuilder.Entity<Like>(entity =>
             {
-                entity.HasKey(l => l.Id);
+                entity.HasIndex(l => new { l.TemplateId, l.UserId })
+                    .HasDatabaseName("IX_Likes_TemplateUser")
+                    .IsUnique();
 
-                entity.HasOne(l => l.Template)
-                    .WithMany(t => t.Likes)
-                    .HasForeignKey(l => l.TemplateId)
-                    .OnDelete(DeleteBehavior.Cascade); // Оставляем для шаблонов
-
-                entity.HasOne(l => l.User)
-                    .WithMany(u => u.Likes)
-                    .HasForeignKey(l => l.UserId)
-                    .OnDelete(DeleteBehavior.Restrict); // Меняем на Restrict для пользователей
+                entity.HasIndex(l => l.UserId)
+                    .HasDatabaseName("IX_Likes_UserId");
             });
-            // Настройка Template
-            modelBuilder.Entity<Template>()
-                .HasOne(t => t.Author)
-                .WithMany(u => u.Templates)
-                .HasForeignKey(t => t.AuthorId)
-                .OnDelete(DeleteBehavior.Cascade);
 
-            modelBuilder.Entity<Template>()
-                .HasOne(t => t.Topic)
-                .WithMany(t => t.Templates)
-                .HasForeignKey(t => t.TopicId)
-                .OnDelete(DeleteBehavior.Restrict);
+            // Конфигурация View
+            modelBuilder.Entity<View>(entity =>
+            {
+                entity.HasIndex(v => new { v.IPAddress, v.TemplateId })
+                    .HasDatabaseName("IX_Views_IPTemplate");
 
-            // Связь Template → FormResponse
-            modelBuilder.Entity<Template>()
-                .HasMany(t => t.Responses)
-                .WithOne(fr => fr.Template)
-                .HasForeignKey(fr => fr.TemplateId)
-                .OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(v => v.TemplateId)
+                    .HasDatabaseName("IX_Views_TemplateId");
+            });
 
-            // Настройка Question
-            modelBuilder.Entity<Question>()
-                .HasOne(q => q.Template)
-                .WithMany(t => t.Questions)
-                .HasForeignKey(q => q.TemplateId)
-                .OnDelete(DeleteBehavior.Cascade);
+            // Конфигурация Comment
+            modelBuilder.Entity<Comment>(entity =>
+            {
+                entity.HasIndex(c => c.TemplateId)
+                    .HasDatabaseName("IX_Comments_TemplateId");
 
-            modelBuilder.Entity<Question>()
-                .HasMany(q => q.Options)
-                .WithOne(o => o.Question)
-                .HasForeignKey(o => o.QuestionId)
-                .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(c => c.AuthorId)
+                    .HasDatabaseName("IX_Comments_AuthorId");
 
-            // Настройка TemplateTag (многие-ко-многим)
-            modelBuilder.Entity<TemplateTag>()
-                .HasKey(tt => new { tt.TemplateId, tt.TagId });
+                entity.Property(c => c.CreatedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
+            });
 
-            modelBuilder.Entity<TemplateTag>()
-                .HasOne(tt => tt.Template)
-                .WithMany(t => t.Tags)
-                .HasForeignKey(tt => tt.TemplateId);
+            // Конфигурация TemplateTag
+            modelBuilder.Entity<TemplateTag>(entity =>
+            {
+                entity.HasKey(tt => new { tt.TemplateId, tt.TagId });
 
-            modelBuilder.Entity<TemplateTag>()
-                .HasOne(tt => tt.Tag)
-                .WithMany(t => t.TemplateTags)
-                .HasForeignKey(tt => tt.TagId);
+                entity.HasIndex(tt => tt.TagId)
+                    .HasDatabaseName("IX_TemplateTags_TagId");
+            });
 
-            // Настройка Answer
-            modelBuilder.Entity<Answer>()
-                .HasOne(a => a.Question)
-                .WithMany(q => q.Answers)
-                .HasForeignKey(a => a.QuestionId)
-                .OnDelete(DeleteBehavior.ClientCascade);
+            // Конфигурация SelectedOption
+            modelBuilder.Entity<SelectedOption>(entity =>
+            {
+                entity.HasIndex(so => so.QuestionOptionId)
+                    .HasDatabaseName("IX_SelectedOptions_QuestionOptionId");
 
-            modelBuilder.Entity<Answer>()
-                .HasMany(a => a.SelectedOptions)
-                .WithOne(so => so.Answer)
-                .HasForeignKey(so => so.AnswerId)
-                .OnDelete(DeleteBehavior.Cascade);
+                entity.HasOne(so => so.QuestionOption)
+                    .WithMany(qo => qo.SelectedOptions)
+                    .OnDelete(DeleteBehavior.Restrict); // Исправление для циклической зависимости
+            });
 
-            // Настройка SelectedOption
-            modelBuilder.Entity<SelectedOption>()
-                .HasOne(so => so.QuestionOption)
-                .WithMany(qo => qo.SelectedOptions)
-                .HasForeignKey(so => so.QuestionOptionId)
-                .OnDelete(DeleteBehavior.ClientCascade);
+            // Оптимизация для Identity
+            modelBuilder.Entity<AppUser>(entity =>
+            {
+                entity.HasIndex(u => u.NormalizedUserName)
+                    .HasDatabaseName("UserNameIndex")
+                    .IsUnique()
+                    .HasFilter("[NormalizedUserName] IS NOT NULL");
+
+                entity.HasIndex(u => u.NormalizedEmail)
+                    .HasDatabaseName("EmailIndex");
+            });
+
+            // Дополнительные оптимизации
+            modelBuilder.Entity<QuestionOption>(entity =>
+            {
+                entity.HasIndex(qo => qo.QuestionId)
+                    .HasDatabaseName("IX_QuestionOptions_QuestionId");
+            });
         }
     }
 }

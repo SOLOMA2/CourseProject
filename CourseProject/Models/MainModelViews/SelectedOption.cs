@@ -4,8 +4,6 @@ using System.ComponentModel.DataAnnotations;
 
 public class SelectedOption
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
 
     [Required]
@@ -14,7 +12,6 @@ public class SelectedOption
     [Required]
     public int QuestionOptionId { get; set; }
 
-    // Навигационные свойства
     [ForeignKey("AnswerId")]
     public Answer Answer { get; set; }
 

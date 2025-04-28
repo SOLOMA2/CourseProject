@@ -6,8 +6,6 @@ namespace CourseProject.Models.MainModelViews
 {
     public class FormResponse
     {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [Required]
@@ -18,7 +16,6 @@ namespace CourseProject.Models.MainModelViews
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // Навигационные свойства
         [ForeignKey("UserId")]
         public AppUser User { get; set; }
 

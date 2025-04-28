@@ -1,21 +1,41 @@
 ﻿@using CourseProject.Models.MainModelViews
 @model Template
 @{
-    ViewData["Title"] = "Создать новый шаблон";
+    ViewData["Title"] = Model.Id == 0 ? "Создать новый шаблон" : "Редактировать шаблон";
 }
 
 <div class="container mt-4">
-    <form asp-action="Template" asp-controller="CreateTemplate" enctype="multipart/form-data" method="post" id="templateForm">
+    <form asp-action="@(Model.Id == 0 ? "Template" : "Edit")" 
+          asp-controller="CreateTemplate"
+          enctype="multipart/form-data" 
+          method="post" 
+          id="templateForm">
         <div asp-validation-summary="All" class="text-danger"></div>
+        
+        <input type="hidden" asp-for="Id" />
+        <input type="hidden" asp-for="AuthorId" />
+        <input type="hidden" asp-for="Type" />
+
         <!-- Основная информация -->
         <div class="card mb-4 shadow">
             <div class="card-header bg-primary text-white">
-                <h4><i class="bi bi-file-earmark-text"></i> Основные настройки</h4>
+                <h4><i class="bi bi-file-earmark-text"></i> @(Model.Id == 0 ? "Основные настройки" : "Редактирование шаблона")</h4>
             </div>
             <div class="card-body">
-                <input type="hidden" asp-for="AuthorId" />
-                <input type="hidden" asp-for="Type" />
-
+                @if (!string.IsNullOrEmpty(Model.ImagePath))
+                {
+                    <div class="mb-3">
+                        <label class="form-label">Текущее изображение</label>
+                        <div>
+                            <img src="@Model.ImagePath" class="img-thumbnail" style="max-width: 200px;" />
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="removeImage" name="removeImage" value="true">
+                                <label class="form-check-label" for="removeImage">Удалить изображение</label>
+                            </div>
+                        </div>
+                    </div>
+                }
+                
                 <div class="mb-3">
                     <label asp-for="Title" class="form-label"></label>
                     <input asp-for="Title" class="form-control" />
@@ -30,8 +50,46 @@
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Изображение шаблона</label>
-                        <input type="file" asp-for="ImageFile" class="form-control" accept="image/*">
+                        <label class="form-label">@(Model.Id == 0 ? "Загрузить изображение" : "Изменить изображение")</label>
+
+                        <!-- Drag-and-Drop зона -->
+                        <div class="drop-zone"
+                             id="dropZone"
+                             ondragover="handleDragOver(event)"
+                             ondragleave="handleDragLeave(event)"
+                             ondrop="handleDrop(event)">
+
+                            <div class="drop-content">
+                                <i class="bi bi-image fs-1 text-muted"></i>
+                                <p class="mt-2">Перетащите изображение сюда</p>
+                                <p class="text-muted small">или</p>
+                                <button type="button"
+                                        class="btn btn-outline-primary btn-sm"
+                                        onclick="document.getElementById('fileInput').click()">
+                                    Выберите файл
+                                </button>
+                            </div>
+
+                            <!-- Скрытый input -->
+                            <input type="file"
+                                   asp-for="ImageFile"
+                                   id="fileInput"
+                                   class="d-none"
+                                   accept="image/*"
+                                   onchange="handleFileSelect(event)">
+                        </div>
+
+                        <!-- Preview -->
+                        <div class="preview-container mt-2" id="previewContainer" style="display: none;">
+                            <img id="imagePreview" class="img-thumbnail" style="max-width: 200px;">
+                            <div class="mt-2">
+                                <button type="button"
+                                        class="btn btn-danger btn-sm"
+                                        onclick="clearImage()">
+                                    <i class="bi bi-trash"></i> Удалить
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <div class="col-md-6 mb-3">
                         <label asp-for="TopicId" class="form-label"></label>
@@ -105,11 +163,21 @@
                 @for (int i = 0; i < Model.Questions.Count; i++)
                 {
                     var question = Model.Questions[i];
-                    var showOptions = question.Type == QuestionType.Radio
-                    || question.Type == QuestionType.Checkbox
-                    || question.Type == QuestionType.Dropdown;
+                    var showOptions = question.Type == QuestionType.Radio || 
+                                      question.Type == QuestionType.Checkbox || 
+                                      question.Type == QuestionType.Dropdown;
 
-                    <div class="card mb-3 shadow-sm question-item" data-type="@question.Type" data-question-index="@i">
+                    <div class="card mb-3 shadow-sm question-item" 
+                         data-type="@question.Type" 
+                         data-question-index="@i"
+                         data-question-id="@question.Id">
+                        
+                        <input type="hidden" asp-for="@Model.Questions[i].Id" />
+                        <input type="hidden" asp-for="@Model.Questions[i].Order" class="question-order" />
+                        <input type="hidden" asp-for="@Model.Questions[i].Type" class="question-type" />
+                        <input type="hidden" asp-for="@Model.Questions[i].Template" value="Default" />
+                        <input type="hidden" asp-for="@Model.Questions[i].Description" value="No description" />
+
                         <div class="card-header bg-light d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center gap-3">
                                 <div class="dropdown">
@@ -151,16 +219,12 @@
                             </div>
                         </div>
                         <div class="card-body">
-                            <input type="hidden" asp-for="@Model.Questions[i].Order" class="question-order" />
-                            <input type="hidden" asp-for="@Model.Questions[i].Type" class="question-type" />
-                            <input type="hidden" asp-for="@Model.Questions[i].Template" value="Default" />
-                            <input type="hidden" asp-for="@Model.Questions[i].Description" value="No description" />
-
                             <div class="mb-3">
                                 <input asp-for="@Model.Questions[i].Text"
                                        class="form-control border-0 border-bottom rounded-0 fs-5 px-0 question-title"
                                        placeholder="Введите вопрос" />
                                 <input type="text" class="form-control" placeholder="Текст ответа" disabled>
+
                                 <span asp-validation-for="@Model.Questions[i].Text" class="text-danger"></span>
                             </div>
 
@@ -175,7 +239,7 @@
                                                 <i class="bi @GetOptionIcon(question.Type)"></i>
                                             </span>
                                             <input asp-for="@Model.Questions[i].Options[j].Text"
-                                                   class="form-control mb-2"
+                                                   class="form-control"
                                                    placeholder="Вариант ответа" />
                                             <button class="btn btn-outline-danger"
                                                     type="button"
@@ -209,7 +273,7 @@
                 </div>
 
                 <div class="mb-3">
-                    <label asp-for="Tags" class="form-label"></label>
+                    <label class="form-label">Теги</label>
                     <input id="tagsInput" name="tags" class="form-control"
                            placeholder="Начните вводить тег..."
                            data-autocomplete-url="@Url.Action("SearchTags", "Templates")">
@@ -230,7 +294,8 @@
 
         <div class="text-end">
             <button type="submit" class="btn btn-primary btn-lg">
-                <i class="bi bi-save"></i> Сохранить шаблон
+                <i class="bi bi-save"></i> 
+                @(Model.Id == 0 ? "Создать шаблон" : "Сохранить изменения")
             </button>
         </div>
     </form>
@@ -281,10 +346,28 @@
 
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', () => {
+            // Для существующих вопросов
+            document.querySelectorAll('.question-item').forEach(item => {
+                const type = item.dataset.type;
+                initQuestion(item, type);
+            });
+
+            // Общая инициализация
             initEventListeners();
             initSortable();
             initDropdowns();
         });
+
+        // Добавляем обработку существующих вопросов
+        function initQuestion(questionItem, type) {
+            const optionsContainer = questionItem.querySelector('.options-container');
+            if (optionsContainer) {
+                optionsContainer.querySelectorAll('.input-group').forEach(opt => {
+                    opt.querySelector('[data-action="remove-option"]')
+                      .addEventListener('click', () => removeOption(opt));
+                });
+            }
+        }
 
         // Инициализация обработчиков событий
         function initEventListeners() {
@@ -532,9 +615,180 @@
         function toggleSettings(questionItem) {
             questionItem.classList.toggle('settings-expanded');
         }
+        // Обработчики Drag-and-Drop
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.target.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.target.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.target.classList.remove('dragover');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        // Обработчик выбора файла через кнопку
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        // Общая обработка файла
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Пожалуйста, выберите изображение');
+                return;
+            }
+
+            // Обновляем input
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            document.getElementById('fileInput').files = dataTransfer.files;
+
+            // Показываем превью
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('imagePreview').src = e.target.result;
+                document.getElementById('previewContainer').style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+        }
+
+        // Очистка изображения
+        function clearImage() {
+            document.getElementById('fileInput').value = '';
+            document.getElementById('imagePreview').src = '';
+            document.getElementById('previewContainer').style.display = 'none';
+
+            // Если есть чекбокс удаления изображения
+            if(document.getElementById('removeImage')) {
+                document.getElementById('removeImage').checked = true;
+            }
+        }
+
+        // Инициализация при наличии существующего изображения
+        document.addEventListener('DOMContentLoaded', () => {
+            const existingImage = '@Model.ImagePath';
+            if(existingImage) {
+                document.getElementById('imagePreview').src = existingImage;
+                document.getElementById('previewContainer').style.display = 'block';
+            }
+        });
+
+             // Получаем элементы по ID (исправлен регистр в dropZone)
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+
+        // Обработчик dragover
+        dropZone.addEventListener('dragover', event => {
+            event.preventDefault();
+            dropZone.classList.add("dragover"); // Убрали точку из имени класса
+        });
+
+        // Обработчик dragleave
+        dropZone.addEventListener('dragleave', event => {
+            event.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+
+        // Обработчик drop
+        dropZone.addEventListener('drop', event => {
+            event.preventDefault();
+            dropZone.classList.remove('dragover');
+
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]); // Переименовали fileload в handleFile
+            }
+        });
+
+        // Обработчик выбора файла
+        fileInput.addEventListener('change', event => {
+            const files = event.target.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // Функция обработки файла
+        function handleFile(file) {
+            // Проверка типа файла
+            if (!file.type.startsWith('image/')) {
+                alert('Пожалуйста, выберите изображение');
+                return;
+            }
+
+            // Показываем превью
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+                previewContainer.style.display = 'block';
+            }
+            reader.readAsDataURL(file);
+
+            // Обновляем DataTransfer для корректной отправки формы
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            fileInput.files = dataTransfer.files;
+        }
+
+        // Функция очистки изображения
+        function clearImage() {
+            fileInput.value = '';
+            imagePreview.src = '';
+            previewContainer.style.display = 'none';
+
+            // Если есть чекбокс удаления
+            if(document.getElementById('removeImage')) {
+                document.getElementById('removeImage').checked = true;
+            }
+        }
     </script>
 
     <style>
+        .drop-zone {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+            /* cursor: pointer; Убрали курсор-указатель */
+        }
+
+            .drop-zone.dragover {
+                border-color: #0d6efd;
+                background-color: rgba(13, 110, 253, 0.05);
+            }
+
+        /* Убрали pointer-events: none */
+        .drop-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Добавили курсор только для кнопки */
+        .btn-outline-primary {
+            cursor: pointer;
+        }
         .question-item {
             border-radius: 0.5rem;
             transition: transform 0.2s, box-shadow 0.2s;

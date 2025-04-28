@@ -6,8 +6,6 @@ namespace CourseProject.Models.MainModelViews
 {
     public class Question
     {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [Required]
@@ -22,13 +20,12 @@ namespace CourseProject.Models.MainModelViews
         public bool ShowInTable { get; set; }
         public bool IsRequired { get; set; }
 
-        // Ограничения
         public int? MaxLength { get; set; }
         public int? MinValue { get; set; }
         public int? MaxValue { get; set; }
 
         public int TemplateId { get; set; }
-        [ValidateNever] // Отключаем валидацию навигационного свойства
+        [ValidateNever] 
         [ForeignKey("TemplateId")]
         public Template Template { get; set; }
         public List<QuestionOption> Options { get; set; } = new();

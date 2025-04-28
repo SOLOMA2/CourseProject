@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CourseProject.Migrations
 {
     [DbContext(typeof(AppUserDbContext))]
-    [Migration("20250425155618_FixDeleteDependenciesNew1")]
-    partial class FixDeleteDependenciesNew1
+    [Migration("20250425173606_FixDeleteDependenciesNew8")]
+    partial class FixDeleteDependenciesNew8
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -112,9 +112,11 @@ namespace CourseProject.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("QuestionId");
+                    b.HasIndex("QuestionId")
+                        .HasDatabaseName("IX_Answers_QuestionId");
 
-                    b.HasIndex("UserResponseId");
+                    b.HasIndex("UserResponseId")
+                        .HasDatabaseName("IX_Answers_UserResponseId");
 
                     b.ToTable("Answers");
                 });
@@ -139,7 +141,14 @@ namespace CourseProject.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TemplateId");
+                    b.HasIndex("CreatedAt")
+                        .IsDescending()
+                        .HasDatabaseName("IX_FormResponses_CreatedAt");
+
+                    b.HasIndex("TemplateId")
+                        .HasDatabaseName("IX_FormResponses_TemplateId");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("TemplateId"), new[] { "UserId", "CreatedAt" });
 
                     b.HasIndex("UserId");
 
@@ -164,16 +173,20 @@ namespace CourseProject.Migrations
                         .HasColumnType("nvarchar(2000)");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
 
                     b.Property<int>("TemplateId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AuthorId");
+                    b.HasIndex("AuthorId")
+                        .HasDatabaseName("IX_Comments_AuthorId");
 
-                    b.HasIndex("TemplateId");
+                    b.HasIndex("TemplateId")
+                        .HasDatabaseName("IX_Comments_TemplateId");
 
                     b.ToTable("Comments");
                 });
@@ -198,9 +211,12 @@ namespace CourseProject.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TemplateId");
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("IX_Likes_UserId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("TemplateId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Likes_TemplateUser");
 
                     b.ToTable("Likes");
                 });
@@ -233,7 +249,8 @@ namespace CourseProject.Migrations
 
                     b.HasKey("TemplateId", "TagId");
 
-                    b.HasIndex("TagId");
+                    b.HasIndex("TagId")
+                        .HasDatabaseName("IX_TemplateTags_TagId");
 
                     b.ToTable("TemplateTags");
                 });
@@ -300,7 +317,11 @@ namespace CourseProject.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TemplateId");
+                    b.HasIndex("Order")
+                        .HasDatabaseName("IX_Questions_Order");
+
+                    b.HasIndex("TemplateId")
+                        .HasDatabaseName("IX_Questions_TemplateId");
 
                     b.ToTable("Questions");
                 });
@@ -322,7 +343,8 @@ namespace CourseProject.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("QuestionId");
+                    b.HasIndex("QuestionId")
+                        .HasDatabaseName("IX_QuestionOptions_QuestionId");
 
                     b.ToTable("QuestionOptions");
                 });
@@ -478,7 +500,8 @@ namespace CourseProject.Migrations
 
                     b.HasIndex("AnswerId");
 
-                    b.HasIndex("QuestionOptionId");
+                    b.HasIndex("QuestionOptionId")
+                        .HasDatabaseName("IX_SelectedOptions_QuestionOptionId");
 
                     b.ToTable("SelectedOptions");
                 });
@@ -495,6 +518,11 @@ namespace CourseProject.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
+                    b.Property<int>("CommentsCount")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -510,6 +538,11 @@ namespace CourseProject.Migrations
                     b.Property<bool>("IsPublic")
                         .HasColumnType("bit");
 
+                    b.Property<int>("LikesCount")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -524,11 +557,25 @@ namespace CourseProject.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("ViewsCount")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.HasKey("Id");
 
-                    b.HasIndex("AuthorId");
+                    b.HasIndex("AuthorId")
+                        .HasDatabaseName("IX_Templates_AuthorId");
 
-                    b.HasIndex("TopicId");
+                    SqlServerIndexBuilderExtensions.HasFillFactor(b.HasIndex("AuthorId"), 90);
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("AuthorId"), new[] { "Title", "CreatedAt" });
+
+                    b.HasIndex("CreatedAt")
+                        .IsDescending()
+                        .HasDatabaseName("IX_Templates_CreatedAt");
+
+                    b.HasIndex("TopicId")
+                        .HasDatabaseName("IX_Templates_TopicId");
 
                     b.ToTable("Templates");
                 });
@@ -553,9 +600,11 @@ namespace CourseProject.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("IPAddress");
+                    b.HasIndex("TemplateId")
+                        .HasDatabaseName("IX_Views_TemplateId");
 
-                    b.HasIndex("TemplateId");
+                    b.HasIndex("IPAddress", "TemplateId")
+                        .HasDatabaseName("IX_Views_IPTemplate");
 
                     b.ToTable("Views");
                 });
@@ -565,13 +614,13 @@ namespace CourseProject.Migrations
                     b.HasOne("CourseProject.Models.MainModelViews.Question", "Question")
                         .WithMany("Answers")
                         .HasForeignKey("QuestionId")
-                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("CourseProject.Models.MainModelViews.FormResponse", "UserResponse")
                         .WithMany("Answers")
                         .HasForeignKey("UserResponseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Question");
@@ -588,9 +637,9 @@ namespace CourseProject.Migrations
                         .IsRequired();
 
                     b.HasOne("CourseProject.Models.AppUser", "User")
-                        .WithMany()
+                        .WithMany("Responses")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Template");
@@ -641,7 +690,7 @@ namespace CourseProject.Migrations
                     b.HasOne("CourseProject.Models.MainModelViews.HelpModel.Tag", "Tag")
                         .WithMany("TemplateTags")
                         .HasForeignKey("TagId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("Template", "Template")
@@ -682,7 +731,7 @@ namespace CourseProject.Migrations
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -691,7 +740,7 @@ namespace CourseProject.Migrations
                     b.HasOne("CourseProject.Models.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -700,7 +749,7 @@ namespace CourseProject.Migrations
                     b.HasOne("CourseProject.Models.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -709,13 +758,13 @@ namespace CourseProject.Migrations
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("CourseProject.Models.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -724,7 +773,7 @@ namespace CourseProject.Migrations
                     b.HasOne("CourseProject.Models.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
@@ -739,7 +788,7 @@ namespace CourseProject.Migrations
                     b.HasOne("CourseProject.Models.MainModelViews.QuestionOption", "QuestionOption")
                         .WithMany("SelectedOptions")
                         .HasForeignKey("QuestionOptionId")
-                        .OnDelete(DeleteBehavior.ClientCascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Answer");
@@ -752,7 +801,7 @@ namespace CourseProject.Migrations
                     b.HasOne("CourseProject.Models.AppUser", "Author")
                         .WithMany("Templates")
                         .HasForeignKey("AuthorId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("CourseProject.Models.MainModelViews.HelpModel.Topic", "Topic")
@@ -782,6 +831,8 @@ namespace CourseProject.Migrations
                     b.Navigation("Comments");
 
                     b.Navigation("Likes");
+
+                    b.Navigation("Responses");
 
                     b.Navigation("Templates");
                 });

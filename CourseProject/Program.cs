@@ -12,8 +12,12 @@ builder.Services.AddSignalR();
 builder.Services.AddControllersWithViews();
 
 builder.Services.AddDbContext<AppUserDbContext>(options =>
-options.UseSqlServer(builder.Configuration.GetConnectionString("Default"))
-);
+{
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("Default"),
+        o => o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
+    );
+});
 
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 {
