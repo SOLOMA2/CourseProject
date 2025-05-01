@@ -12,7 +12,7 @@ namespace CourseProject.Models
         public List<Like> Likes { get; set; } = new List<Like>();
         public List<Comment> Comments { get; set; } = new List<Comment>();
         public List<FormResponse> Responses { get; set; } = new List<FormResponse>();
-
+        public List<TemplateAccess> AllowedTemplates { get; set; } = new List<TemplateAccess>();
 
     }
 }

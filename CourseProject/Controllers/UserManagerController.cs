@@ -21,11 +21,11 @@ namespace CourseProject.Controllers
         private readonly ILogger<UserManagerController> _logger;
 
         public UserManagerController(
-    AppUserDbContext context,
-    UserManager<AppUser> userManager,
-    RoleManager<IdentityRole> roleManager,
-    SignInManager<AppUser> signInManager,
-    ILogger<UserManagerController> logger)
+            AppUserDbContext context,
+            UserManager<AppUser> userManager,
+            RoleManager<IdentityRole> roleManager,
+            SignInManager<AppUser> signInManager,
+            ILogger<UserManagerController> logger)
         {
             _context = context;
             _userManager = userManager;
@@ -77,26 +77,83 @@ namespace CourseProject.Controllers
         public async Task<IActionResult> DeleteUsers(List<string> userIds, int pageNumber = 1, string search = "", int pageSize = 10)
         {
             var currentUser = await _userManager.GetUserAsync(User);
-            bool curDeletUser = false;
-            foreach (var id  in userIds)
+            bool currentUserDeleted = false;
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+
+            try
             {
-                var user = await _userManager.FindByIdAsync(id);
-                if (user != null)
+                foreach (var userId in userIds)
                 {
+                    var user = await _userManager.FindByIdAsync(userId);
+                    if (user == null) continue;
+
+                    var userTemplates = await _context.Templates
+                        .Where(t => t.AuthorId == userId)
+                        .ToListAsync();
+
+                    foreach (var template in userTemplates)
+                    {
+                        await _context.TemplateAccess
+                            .Where(ta => ta.TemplateId == template.Id)
+                            .ExecuteDeleteAsync();
+
+                        await _context.Comments
+                            .Where(c => c.TemplateId == template.Id)
+                            .ExecuteDeleteAsync();
+
+                        await _context.Likes
+                            .Where(l => l.TemplateId == template.Id)
+                            .ExecuteDeleteAsync();
+
+                        await _context.Views
+                            .Where(v => v.TemplateId == template.Id)
+                            .ExecuteDeleteAsync();
+
+                        _context.Templates.Remove(template);
+                    }
+
+                    await _context.Comments
+                        .Where(c => c.AuthorId == userId)
+                        .ExecuteDeleteAsync();
+
+                    await _context.Likes
+                        .Where(l => l.UserId == userId)
+                        .ExecuteDeleteAsync();
+
+                    await _context.TemplateAccess
+                        .Where(ta => ta.UserId == userId)
+                        .ExecuteDeleteAsync();
+
+                    await _context.FormResponses
+                        .Where(fr => fr.UserId == userId)
+                        .ExecuteDeleteAsync();
+
                     await _userManager.DeleteAsync(user);
+
                     if (user.Id == currentUser?.Id)
                     {
-                        curDeletUser = true;
+                        currentUserDeleted = true;
                     }
                 }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                TempData["Error"] = $"Ошибка при удалении: {ex.Message}";
+                return RedirectToAction("AdminPanel", new { pageNumber, search, pageSize });
             }
 
-            if (curDeletUser)
+            if (currentUserDeleted)
             {
                 await _signInManager.SignOutAsync();
                 return RedirectToAction("Index", "Home");
             }
 
+            TempData["Message"] = $"Успешно удалено пользователей: {userIds.Count}";
             return RedirectToAction("AdminPanel", new { pageNumber, search, pageSize });
         }
 
@@ -153,18 +210,18 @@ namespace CourseProject.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateRoles(
-    string userId,
-    List<string> selectedRoles,
-    int pageNumber,
-    string search)
+            string userId,
+            List<string> selectedRoles,
+            int pageNumber,
+            string search)
         {
             if (string.IsNullOrWhiteSpace(userId))
             {
-                _logger.LogError("UserId: {userId}", userId); // Логируем фактическое значение
+                _logger.LogError("UserId: {userId}", userId); 
                 return BadRequest("User ID is required");
             }
 
-            var user = await _userManager.FindByIdAsync(userId); // Используем стандартный метод Error: Cannot read properties of null (reading 'querySelector')
+            var user = await _userManager.FindByIdAsync(userId); 
             if (user == null) return NotFound("User not found");
 
             using (var transaction = await _context.Database.BeginTransactionAsync())

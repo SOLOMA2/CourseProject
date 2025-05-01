@@ -1,17 +1,17 @@
 ﻿@using CourseProject.Models.MainModelViews
+@inject UserManager<AppUser> _userManager
 @model Template
 @{
     ViewData["Title"] = Model.Id == 0 ? "Создать новый шаблон" : "Редактировать шаблон";
 }
 
 <div class="container mt-4">
-    <form asp-action="@(Model.Id == 0 ? "Template" : "Edit")" 
+    <form asp-action="@(Model.Id == 0 ? "Template" : "Edit")"
           asp-controller="CreateTemplate"
-          enctype="multipart/form-data" 
-          method="post" 
+          enctype="multipart/form-data"
+          method="post"
           id="templateForm">
         <div asp-validation-summary="All" class="text-danger"></div>
-        
         <input type="hidden" asp-for="Id" />
         <input type="hidden" asp-for="AuthorId" />
         <input type="hidden" asp-for="Type" />
@@ -35,7 +35,7 @@
                         </div>
                     </div>
                 }
-                
+
                 <div class="mb-3">
                     <label asp-for="Title" class="form-label"></label>
                     <input asp-for="Title" class="form-control" />
@@ -52,40 +52,31 @@
                     <div class="col-md-6 mb-3">
                         <label class="form-label">@(Model.Id == 0 ? "Загрузить изображение" : "Изменить изображение")</label>
 
-                        <!-- Drag-and-Drop зона -->
-                        <div class="drop-zone"
-                             id="dropZone"
-                             ondragover="handleDragOver(event)"
-                             ondragleave="handleDragLeave(event)"
-                             ondrop="handleDrop(event)">
-
+                        <div class="drop-zone" id="dropZone">
                             <div class="drop-content">
                                 <i class="bi bi-image fs-1 text-muted"></i>
                                 <p class="mt-2">Перетащите изображение сюда</p>
                                 <p class="text-muted small">или</p>
                                 <button type="button"
                                         class="btn btn-outline-primary btn-sm"
-                                        onclick="document.getElementById('fileInput').click()">
+                                        id="selectFileButton">
                                     Выберите файл
                                 </button>
                             </div>
 
-                            <!-- Скрытый input -->
                             <input type="file"
                                    asp-for="ImageFile"
                                    id="fileInput"
                                    class="d-none"
-                                   accept="image/*"
-                                   onchange="handleFileSelect(event)">
+                                   accept="image/*">
                         </div>
 
-                        <!-- Preview -->
                         <div class="preview-container mt-2" id="previewContainer" style="display: none;">
                             <img id="imagePreview" class="img-thumbnail" style="max-width: 200px;">
                             <div class="mt-2">
                                 <button type="button"
                                         class="btn btn-danger btn-sm"
-                                        onclick="clearImage()">
+                                        id="deleteImageButton">
                                     <i class="bi bi-trash"></i> Удалить
                                 </button>
                             </div>
@@ -163,20 +154,25 @@
                 @for (int i = 0; i < Model.Questions.Count; i++)
                 {
                     var question = Model.Questions[i];
-                    var showOptions = question.Type == QuestionType.Radio || 
-                                      question.Type == QuestionType.Checkbox || 
-                                      question.Type == QuestionType.Dropdown;
+                    var showOptions = question.Type == QuestionType.Radio ||
+                    question.Type == QuestionType.Checkbox ||
+                    question.Type == QuestionType.Dropdown;
 
-                    <div class="card mb-3 shadow-sm question-item" 
-                         data-type="@question.Type" 
+                    <div class="card mb-3 shadow-sm question-item"
+                         data-type="@question.Type"
                          data-question-index="@i"
                          data-question-id="@question.Id">
-                        
+
                         <input type="hidden" asp-for="@Model.Questions[i].Id" />
                         <input type="hidden" asp-for="@Model.Questions[i].Order" class="question-order" />
                         <input type="hidden" asp-for="@Model.Questions[i].Type" class="question-type" />
                         <input type="hidden" asp-for="@Model.Questions[i].Template" value="Default" />
                         <input type="hidden" asp-for="@Model.Questions[i].Description" value="No description" />
+
+                        @if (question.Type != QuestionType.Text)
+                        {
+                            <input type="hidden" asp-for="@Model.Questions[i].TextType" value="" />
+                        }
 
                         <div class="card-header bg-light d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center gap-3">
@@ -186,7 +182,7 @@
                                             data-bs-toggle="dropdown"
                                             aria-expanded="false">
                                         <i class="bi @GetQuestionIcon(question.Type) me-2"></i>
-                                        <span class="question-type-label">@question.Type</span>
+                                        <span class="question-type-label">@GetQuestionTypeName(question.Type)</span>
                                     </button>
                                     <ul class="dropdown-menu question-type-menu">
                                         @foreach (var type in Enum.GetValues(typeof(QuestionType)))
@@ -195,16 +191,24 @@
                                                 <button class="dropdown-item"
                                                         data-action="change-type"
                                                         data-type="@type">
-                                                    <i class="bi @GetQuestionIcon((QuestionType)type) me-2"></i>@type
+                                                    <i class="bi @GetQuestionIcon((QuestionType)type) me-2"></i>
+                                                    @GetQuestionTypeName((QuestionType)type)
                                                 </button>
                                             </li>
                                         }
                                     </ul>
                                 </div>
                                 <div class="form-check form-switch">
+                                    <input type="hidden"
+                                           type="checkbox"
+                                           asp-for="@Model.Questions[i].IsRequired"
+                                           value="false"
+                                           style="position: absolute; left: -9999px;" />
                                     <input class="form-check-input"
                                            type="checkbox"
-                                           asp-for="@Model.Questions[i].IsRequired" />
+                                           asp-for="@Model.Questions[i].IsRequired"
+                                           value="true" />
+
                                     <label class="form-check-label">Обязательный</label>
                                 </div>
                             </div>
@@ -223,10 +227,34 @@
                                 <input asp-for="@Model.Questions[i].Text"
                                        class="form-control border-0 border-bottom rounded-0 fs-5 px-0 question-title"
                                        placeholder="Введите вопрос" />
-                                <input type="text" class="form-control" placeholder="Текст ответа" disabled>
-
                                 <span asp-validation-for="@Model.Questions[i].Text" class="text-danger"></span>
+                                <div class="mt-3">
+                                    <label class="form-label">Поле для ответа:</label>
+                                </div>
                             </div>
+
+                            @if (question.Type == QuestionType.Text)
+                            {
+                                <div class="row align-items-center mt-3">
+                                    <div class="col-md-4">
+                                        <select asp-for="@Model.Questions[i].TextType"
+                                                class="form-select text-type-select">
+                                            <option value="text">Текст</option>
+                                            <option value="number">Число</option>
+                                            <option value="date">Дата</option>
+                                            <option value="time">Время</option>
+                                            <option value="email">Email</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <input type="text"
+                                               class="form-control"
+                                               placeholder="Текст ответа"
+                                        @GetInputAttributes(question.TextType)
+                                               disabled>
+                                    </div>
+                                </div>
+                            }
 
                             @if (showOptions)
                             {
@@ -267,34 +295,118 @@
                 <h4><i class="bi bi-gear"></i> Дополнительные настройки</h4>
             </div>
             <div class="card-body">
-                <div class="mb-3 form-check form-switch">
-                    <input asp-for="IsPublic" class="form-check-input" type="checkbox">
-                    <label asp-for="IsPublic" class="form-check-label">Публичный доступ</label>
+                <div class="access-options">
+                    <!-- Публичный доступ -->
+                    <div class="access-item mb-3 p-3 border rounded">
+                        <div class="form-check">
+                            <input class="form-check-input access-type" type="radio"
+                                   name="accessType" id="publicAccess" value="Public" asp-for="AccessType">
+                            <label class="form-check-label d-block" for="publicAccess">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-globe fs-5 me-3"></i>
+                                    <div>
+                                        <h5 class="mb-1">Публичный доступ</h5>
+                                        <small class="text-muted">Доступен всем пользователям</small>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Приватный доступ -->
+                    <div class="access-item mb-3 p-3 border rounded">
+                        <div class="form-check">
+                            <input class="form-check-input access-type"
+                                   type="radio"
+                                   name="accessType"
+                                   id="privateAccess"
+                                   value="Private" asp-for="AccessType">
+                            <label class="form-check-label d-block" for="privateAccess">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-lock fs-5 me-3"></i>
+                                    <div>
+                                        <h5 class="mb-1">Приватный доступ</h5>
+                                        <small class="text-muted">Только выбранные пользователи</small>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div id="privateAccessBlock" class="mt-3">
+                            <div class="mb-3">
+                                <label>Добавить пользователей:</label>
+                                <input type="text" id="userSearch" class="form-control"
+                                       placeholder="Введите имя или email">
+                                <div id="userSearchError" class="text-danger d-none">Выберите пользователя из списка</div>
+
+                                <div id="selectedUsers" class="mt-2">
+                                    @foreach (var user in Model.AllowedUsers)
+                                    {
+                                        <span class="badge bg-secondary me-1 mb-1">
+                                            @user.User.UserName
+                                            <input type="hidden" name="selectedUserIds" value="@user.UserId">
+                                            <button type="button" class="btn-close btn-close-white"
+                                                    onclick="removeUser(this)"></button>
+                                        </span>
+                                    }
+                                </div>
+                                <div id="selectedUsersError" class="text-danger d-none">Добавьте хотя бы одного пользователя</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Доступ по ссылке -->
+                    <div class="access-item p-3 border rounded">
+                        <div class="form-check">
+                            <input class="form-check-input access-type" type="radio"
+                                   name="accessType" id="linkAccess" value="Link" asp-for="AccessType">
+                            <label class="form-check-label d-block" for="linkAccess">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-link-45deg fs-5 me-3"></i>
+                                    <div>
+                                        <h5 class="mb-1">Доступ по ссылке</h5>
+                                        <small class="text-muted">Только те, у кого есть ссылка</small>
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                        <div id="linkAccessBlock" class="mt-3">
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control"
+                                       id="shareLink"
+                                       value="@Url.Action("Answer", "Template", new { id = Model.Id, key = Model.LinkKey })"
+                                       readonly>
+                                <button class="btn btn-outline-secondary" type="button"
+                                        onclick="copyToClipboard(this)">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted mt-1 d-block">(!!!! Щас это просто заглушка, можно выбрать, но функционал никакого нет, просто не отобразится в главном меню)</small>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label">Теги</label>
                     <input id="tagsInput" name="tags" class="form-control"
-                           placeholder="Начните вводить тег..."
-                           data-autocomplete-url="@Url.Action("SearchTags", "Templates")">
-                    <div id="selectedTags" class="mt-2">
+                           placeholder="Введите тег...">
+                    @*  <div id="selectedTags" class="mt-2">
                         @for (int i = 0; i < Model.Tags.Count; i++)
                         {
                             <span class="badge bg-secondary me-1 mb-1">
                                 @Model.Tags[i].Tag.Name
                                 <input type="hidden" asp-for="@Model.Tags[i].TagId" />
-                                <button type="button" class="btn-close btn-close-white"
-                                        onclick="this.parentElement.remove()"></button>
+                                <button type="button" class="btn-close btn-close-white"></button>
                             </span>
                         }
-                    </div>
+                    </div> *@
                 </div>
             </div>
         </div>
 
         <div class="text-end">
             <button type="submit" class="btn btn-primary btn-lg">
-                <i class="bi bi-save"></i> 
+                <i class="bi bi-save"></i>
                 @(Model.Id == 0 ? "Создать шаблон" : "Сохранить изменения")
             </button>
         </div>
@@ -305,12 +417,134 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <partial name="_ValidationScriptsPartial" />
     <script>
+        // Обновленный код для управления видимостью блоков
+        document.addEventListener('DOMContentLoaded', function() {
+            // Находим элементы
+            const privateRadio = document.getElementById('privateAccess');
+            const linkRadio = document.getElementById('linkAccess');
+            const privateBlock = document.getElementById('privateAccessBlock');
+            const linkBlock = document.getElementById('linkAccessBlock');
+
+            // Функция обновления видимости
+            function updateAccessBlocks() {
+                // Убедимся что элементы существуют
+                if (!privateRadio || !linkRadio || !privateBlock || !linkBlock) return;
+
+                // Устанавливаем видимость
+                privateBlock.style.display = privateRadio.checked ? 'block' : 'none';
+                linkBlock.style.display = linkRadio.checked ? 'block' : 'none';
+            }
+
+            // Вешаем обработчики
+            document.querySelectorAll('input[name="accessType"]').forEach(radio => {
+                radio.addEventListener('change', updateAccessBlocks);
+            });
+
+            // Первоначальная настройка
+            updateAccessBlocks();
+
+            // Добавим лог для отладки
+            console.log('Инициализация завершена', {
+                privateChecked: privateRadio.checked,
+                linkChecked: linkRadio.checked
+            });
+        });
+
+        // Автодополнение пользователей
+        const userSearch = document.getElementById('userSearch');
+        const selectedUsers = document.getElementById('selectedUsers');
+        let searchTimeout;
+
+        userSearch.addEventListener('input', function(e) {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(async () => {
+                const term = e.target.value.trim();
+                if(term.length < 2) return;
+
+                const response = await fetch(`/CreateTemplate/SearchUsers?term=${encodeURIComponent(term)}`);
+                const users = await response.json();
+
+                // Показываем простой dropdown
+                showSuggestions(users);
+            }, 300);
+        });
+
+        // Обновленная функция показа подсказок
+        function showSuggestions(users) {
+            // Удаляем предыдущие подсказки
+            const oldSuggestions = document.querySelector('.suggestions-container');
+            if (oldSuggestions) oldSuggestions.remove();
+
+            // Создаем новый контейнер
+            const container = document.createElement('div');
+            container.className = 'suggestions-container mt-2 border rounded';
+            container.style.maxHeight = '200px';
+            container.style.overflowY = 'auto';
+
+            users.forEach(user => {
+                const item = document.createElement('div');
+                item.className = 'p-2 border-bottom hover-bg';
+                item.textContent = user.label;
+                item.onclick = () => {
+                    addUser(user);
+                    container.remove(); // Удаляем контейнер после выбора
+                };
+                container.appendChild(item);
+            });
+
+            // Вставляем после поля поиска
+            userSearch.parentNode.insertBefore(container, userSearch.nextSibling);
+        }
+
+        function addUser(user) {
+            if(!document.querySelector(`input[value="${user.value}"]`)) {
+                selectedUsers.innerHTML += `
+                    <span class="badge bg-secondary me-1 mb-1">
+                        ${user.label}
+                        <input type="hidden" name="selectedUserIds" value="${user.value}">
+                        <button type="button" class="btn-close btn-close-white"
+                                onclick="this.parentElement.remove()"></button>
+                    </span>
+                `;
+            }
+            userSearch.value = '';
+        }
+
+        // Валидация формы
+        document.querySelector('form').onsubmit = function(e) {
+            if(document.getElementById('privateAccess').checked &&
+               document.querySelectorAll('[name="selectedUserIds"]').length === 0) {
+                e.preventDefault();
+                alert('Добавьте хотя бы одного пользователя для приватного доступа!');
+            }
+        };
+
         // Конфигурация типов вопросов
         const QUESTION_TYPES = {
             Text: {
                 icon: 'bi-input-cursor-text',
-                name: 'Краткий ответ',
-                template: () => '<input type="text" class="form-control" placeholder="Текст ответа" disabled>'
+                name: 'Текстовый ответ',
+                template: (questionIndex, textType = 'text') => `
+                    <div class="row align-items-center mt-3">
+                        <div class="col-md-4">
+                            <select class="form-select text-type-select"
+                                    name="Questions[${questionIndex}].TextType">
+                                <option value="text" ${textType === 'text' ? 'selected' : ''}>Текст</option>
+                                <option value="number" ${textType === 'number' ? 'selected' : ''}>Число</option>
+                                <option value="date" ${textType === 'date' ? 'selected' : ''}>Дата</option>
+                                <option value="time" ${textType === 'time' ? 'selected' : ''}>Время</option>
+                                <option value="email" ${textType === 'email' ? 'selected' : ''}>Email</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <input type="text"
+                                   class="form-control"
+                                   placeholder="Текст ответа"
+                                   ${getTextTypeAttributes(textType)}
+                                   disabled>
+                        </div>
+                    </div>
+                `
             },
             Paragraph: {
                 icon: 'bi-textarea-t',
@@ -384,8 +618,16 @@
                     'change-type': () => changeType(questionItem, target.dataset.type),
                     'add-option': () => addOption(questionItem),
                     'remove-option': () => removeOption(target.closest('.input-group')),
-                    'duplicate': () => duplicateQuestion(questionItem),
-                    'delete': () => deleteQuestion(questionItem),
+                    'duplicate': () => {
+                        const questionsToProcess = questionItem ? [questionItem] : getSelectedQuestions();
+                        questionsToProcess.forEach(q => duplicateQuestion(q));
+                        reindexQuestions();
+                    },
+                    'delete': () => {
+                        const questionsToProcess = questionItem ? [questionItem] : getSelectedQuestions();
+                        questionsToProcess.forEach(q => deleteQuestion(q));
+                        reindexQuestions();
+                    },
                     'toggle-settings': () => toggleSettings(questionItem)
                 };
 
@@ -441,6 +683,7 @@
                         </ul>
                     </div>
                     <div class="form-check form-switch">
+                        <input type="hidden" type="checkbox" name="Questions[${index}].IsRequired" value="false" style="position: absolute; left: -9999px;" />
                         <input class="form-check-input"
                                type="checkbox"
                                name="Questions[${index}].IsRequired"
@@ -553,7 +796,20 @@
             const body = questionItem.querySelector('.card-body');
             body.innerHTML = generateQuestionBody(newType, questionItem.dataset.questionIndex);
             initDropdowns();
+                if(newType === 'Text') {
+            const prevType = questionItem.dataset.textType || 'text';
+            body.innerHTML = generateQuestionBody(newType, index, prevType);
         }
+        }
+
+                // Обработчик изменения типа текста
+        document.addEventListener('change', e => {
+            if(e.target.classList.contains('text-type-select')) {
+                const input = e.target.closest('.row').querySelector('input');
+                const type = e.target.value;
+                input.type = type === 'text' ? 'text' : type;
+            }
+        });
 
         // Обновление индексов вопросов
                 function updateQuestionIndexes() {
@@ -569,8 +825,20 @@
             updateQuestionIndexes();
         }
 
+        function duplicateQuestion(questionItem) {
+            const clone = questionItem.cloneNode(true);
+            clone.querySelector('.question-selector').checked = false;
+            questionItem.after(clone);
+        }
+
+        function getSelectedQuestions() {
+            return Array.from(document.querySelectorAll('.question-selector:checked'))
+                .map(checkbox => checkbox.closest('.question-item'))
+                .filter(item => item !== null);
+        }
+
         // Drag and drop
-                function initSortable() {
+        function initSortable() {
             new Sortable(document.getElementById('questionsContainer'), {
                 handle: '.card-header',
                 animation: 0,
@@ -579,6 +847,53 @@
                     updateQuestionIndexes();
                 }
             });
+        }
+
+        function reindexQuestions() {
+            document.querySelectorAll('.question-item').forEach((item, index) => {
+                // Обновление data-атрибута
+                item.dataset.questionIndex = index;
+
+                // Обновление скрытого поля Order
+                item.querySelector('.question-order').value = index;
+
+                // Обновление имен полей ввода
+                item.querySelectorAll('input, select, textarea').forEach(input => {
+                    const name = input.getAttribute('name');
+                    if (name) {
+                        const newName = name.replace(
+                            /Questions\[(\d+)\]/g,
+                            `Questions[${index}]`
+                        );
+                        input.setAttribute('name', newName);
+                    }
+                });
+
+                // Обновление опций внутри вопроса
+                item.querySelectorAll('.options-container [name*="Options"]').forEach((option, optionIndex) => {
+                    const name = option.getAttribute('name');
+                    if (name) {
+                        const newName = name.replace(
+                            /Options\[(\d+)\]/g,
+                            `Options[${optionIndex}]`
+                        );
+                        option.setAttribute('name', newName);
+                    }
+                });
+            });
+
+            initValidation();
+        }
+
+        function getTextTypeAttributes(type) {
+            const attributes = {
+                'number': 'type="number"',
+                'date': 'type="date"',
+                'time': 'type="time"',
+                'email': 'type="email"',
+                'text': 'type="text"'
+            };
+            return attributes[type] || 'type="text"';
         }
 
         // Вспомогательные функции
@@ -612,153 +927,124 @@
         function toggleSettings(questionItem) {
             questionItem.classList.toggle('settings-expanded');
         }
-        // Обработчики Drag-and-Drop
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.target.classList.add('dragover');
-        }
+        // Обработчики Drag-and-Drop для изображений
+            document.addEventListener('DOMContentLoaded', () => {
+            // Инициализация элементов
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const selectFileButton = document.getElementById('selectFileButton');
+            const deleteImageButton = document.getElementById('deleteImageButton');
+            const previewContainer = document.getElementById('previewContainer');
+            const imagePreview = document.getElementById('imagePreview');
 
-        function handleDragLeave(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.target.classList.remove('dragover');
-        }
-
-        function handleDrop(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.target.classList.remove('dragover');
-
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
-        }
-
-        // Обработчик выбора файла через кнопку
-        function handleFileSelect(e) {
-            const file = e.target.files[0];
-            if (file) {
-                handleFile(file);
-            }
-        }
-
-        // Общая обработка файла
-        function handleFile(file) {
-            if (!file.type.startsWith('image/')) {
-                alert('Пожалуйста, выберите изображение');
-                return;
-            }
-
-            // Обновляем input
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            document.getElementById('fileInput').files = dataTransfer.files;
-
-            // Показываем превью
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                document.getElementById('imagePreview').src = e.target.result;
-                document.getElementById('previewContainer').style.display = 'block';
-            }
-            reader.readAsDataURL(file);
-        }
-
-        // Очистка изображения
-        function clearImage() {
-            document.getElementById('fileInput').value = '';
-            document.getElementById('imagePreview').src = '';
-            document.getElementById('previewContainer').style.display = 'none';
-
-            // Если есть чекбокс удаления изображения
-            if(document.getElementById('removeImage')) {
-                document.getElementById('removeImage').checked = true;
-            }
-        }
-
-        // Инициализация при наличии существующего изображения
-        document.addEventListener('DOMContentLoaded', () => {
-            const existingImage = '@Model.ImagePath';
-            if(existingImage) {
-                document.getElementById('imagePreview').src = existingImage;
-                document.getElementById('previewContainer').style.display = 'block';
-            }
-        });
-
-             // Получаем элементы по ID (исправлен регистр в dropZone)
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const previewContainer = document.getElementById('previewContainer');
-        const imagePreview = document.getElementById('imagePreview');
-
-        // Обработчик dragover
-        dropZone.addEventListener('dragover', event => {
-            event.preventDefault();
-            dropZone.classList.add("dragover"); // Убрали точку из имени класса
-        });
-
-        // Обработчик dragleave
-        dropZone.addEventListener('dragleave', event => {
-            event.preventDefault();
-            dropZone.classList.remove('dragover');
-        });
-
-        // Обработчик drop
-        dropZone.addEventListener('drop', event => {
-            event.preventDefault();
-            dropZone.classList.remove('dragover');
-
-            const files = event.dataTransfer.files;
-            if (files.length > 0) {
-                handleFile(files[0]); // Переименовали fileload в handleFile
-            }
-        });
-
-        // Обработчик выбора файла
-        fileInput.addEventListener('change', event => {
-            const files = event.target.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
-        });
-
-        // Функция обработки файла
-        function handleFile(file) {
-            // Проверка типа файла
-            if (!file.type.startsWith('image/')) {
-                alert('Пожалуйста, выберите изображение');
-                return;
-            }
-
-            // Показываем превью
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imagePreview.src = e.target.result;
+            // Инициализация существующего изображения
+            if('@Model.ImagePath' && '@Model.ImagePath' !== '') {
+                imagePreview.src = '@Model.ImagePath';
                 previewContainer.style.display = 'block';
             }
-            reader.readAsDataURL(file);
 
-            // Обновляем DataTransfer для корректной отправки формы
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            fileInput.files = dataTransfer.files;
+            // Обработчики событий
+            selectFileButton.addEventListener('click', () => fileInput.click());
+            deleteImageButton.addEventListener('click', clearImage);
+
+            // Drag-and-drop обработчики
+            const preventDefaults = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            };
+
+        const dragStartEvents = ['dragenter', 'dragover'];
+        for (let i = 0; i < dragStartEvents.length; i++) {
+            const eventName = dragStartEvents[i];
+            dropZone.addEventListener(eventName, function(e) {
+                preventDefaults(e);
+                dropZone.classList.add('dragover');
+            });
         }
 
-        // Функция очистки изображения
-        function clearImage() {
-            fileInput.value = '';
-            imagePreview.src = '';
-            previewContainer.style.display = 'none';
+                    const dragEndEvents = ['dragleave', 'drop'];
+        for (let j = 0; j < dragEndEvents.length; j++) {
+            const eventName = dragEndEvents[j];
+            dropZone.addEventListener(eventName, function(e) {
+                preventDefaults(e);
+                dropZone.classList.remove('dragover');
+            });
+        }
 
-            // Если есть чекбокс удаления
-            if(document.getElementById('removeImage')) {
-                document.getElementById('removeImage').checked = true;
+            dropZone.addEventListener('drop', handleDrop);
+            fileInput.addEventListener('change', handleFileSelect);
+
+            // Функции обработки
+            function handleDrop(e) {
+                const files = e.dataTransfer.files;
+                if(files.length > 0) {
+                    handleFile(files[0]);
+                }
             }
-        }
+
+            function handleFileSelect(e) {
+                const files = e.target.files;
+                if(files.length > 0) {
+                    handleFile(files[0]);
+                }
+            }
+
+            function handleFile(file) {
+                if (!file.type.startsWith('image/')) {
+                    alert('Пожалуйста, выберите изображение');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                fileInput.files = dataTransfer.files;
+            }
+
+            function clearImage() {
+                fileInput.value = '';
+                imagePreview.src = '';
+                previewContainer.style.display = 'none';
+
+                if(document.getElementById('removeImage')) {
+                    document.getElementById('removeImage').checked = true;
+                }
+            }
+        });
     </script>
 
     <style>
+        #privateAccessBlock,
+        #linkAccessBlock {
+            display: none;
+        }
+
+        .access-item {
+            transition: all 0.2s ease;
+            border: 1px solid #dee2e6 !important;
+        }
+
+            .access-item:hover {
+                border-color: #0d6efd !important;
+                background-color: #f8f9fa;
+            }
+
+        .form-check-input:checked + .form-check-label .access-item {
+            border-color: #0d6efd !important;
+            background-color: #e7f1ff;
+        }
+
+        .access-item h5 {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
         .drop-zone {
             border: 2px dashed #dee2e6;
             border-radius: 8px;
@@ -766,7 +1052,6 @@
             text-align: center;
             transition: all 0.3s ease;
             background: #f8f9fa;
-            /* cursor: pointer; Убрали курсор-указатель */
         }
 
             .drop-zone.dragover {
@@ -774,7 +1059,6 @@
                 background-color: rgba(13, 110, 253, 0.05);
             }
 
-        /* Убрали pointer-events: none */
         .drop-content {
             display: flex;
             flex-direction: column;
@@ -782,10 +1066,10 @@
             gap: 0.5rem;
         }
 
-        /* Добавили курсор только для кнопки */
         .btn-outline-primary {
             cursor: pointer;
         }
+
         .question-item {
             border-radius: 0.5rem;
             transition: transform 0.2s, box-shadow 0.2s;
@@ -876,6 +1160,31 @@
             QuestionType.Checkbox => "bi-check-square",
             QuestionType.Dropdown => "bi-caret-down-fill",
             _ => "bi-circle"
+        };
+    }
+
+    private string GetInputAttributes(string textType)
+    {
+        return textType switch
+        {
+            "number" => "type=\"number\"",
+            "date" => "type=\"date\"",
+            "time" => "type=\"time\"",
+            "email" => "type=\"email\"",
+            _ => "type=\"text\""
+        };
+    }
+    private string GetQuestionTypeName(QuestionType type)
+    {
+        return type switch
+        {
+            QuestionType.Text => "Текстовый ответ",
+            QuestionType.Paragraph => "Абзац",
+            QuestionType.Radio => "Один из списка",
+            QuestionType.Checkbox => "Несколько из списка",
+            QuestionType.Dropdown => "Выпадающий список",
+            QuestionType.YesNo => "Да/Нет",
+            _ => "Неизвестный тип"
         };
     }
 }

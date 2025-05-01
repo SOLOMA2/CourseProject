@@ -1,0 +1,220 @@
+﻿@model List<FormResponse>
+@using CourseProject.Models.MainModelViews
+@{
+    ViewData["Title"] = "Мои ответы";
+}
+
+<div class="container py-5">
+    <div class="d-flex align-items-center gap-3 mb-5">
+        <h1 class="h2 mb-0">
+            <i class="bi bi-card-checklist text-primary"></i>
+            <span class="ms-2">@ViewData["Title"]</span>
+        </h1>
+        <span class="badge bg-primary rounded-pill fs-6">@Model.Count ответов</span>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-inbox fs-1 text-muted mb-3"></i>
+                <h3 class="h5 text-muted mb-3">Ответов не найдено</h3>
+                <p class="text-muted">Пройдите шаблоны, чтобы увидеть здесь свои ответы</p>
+                <a href="@Url.Action("Index", "Templates")" class="btn btn-primary px-4">
+                    <i class="bi bi-search me-2"></i>Найти шаблоны
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="accordion" id="responsesAccordion">
+            @{
+                var groupedResponses = Model
+                .GroupBy(r => r.Template)
+                .OrderByDescending(g => g.Max(r => r.CreatedAt))
+                .Select((g, index) => new { Template = g.Key, Responses = g.ToList(), Index = index });
+            }
+
+            @foreach (var group in groupedResponses)
+            {
+                <div class="accordion-item shadow-sm mb-3">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#collapse@(group.Index)"
+                                aria-expanded="false">
+                            <div class="d-flex flex-column w-100">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="h5 mb-0">
+                                        <i class="bi bi-file-earmark-text me-2"></i>
+                                        @group.Template.Title
+                                    </span>
+                                    <div class="text-muted small">
+                                        Ответов: @group.Responses.Count
+                                    </div>
+                                </div>
+                                <small class="text-muted mt-1">
+                                    Последний ответ: @group.Responses.Max(r => r.CreatedAt).ToString("dd.MM.yyyy HH:mm")
+                                </small>
+                            </div>
+                        </button>
+                    </h2>
+
+                    <div id="collapse@(group.Index)"
+                         class="accordion-collapse collapse"
+                         data-bs-parent="#responsesAccordion">
+                        <div class="accordion-body pt-4">
+                            <div class="row g-4">
+                                @foreach (var response in group.Responses.OrderByDescending(r => r.CreatedAt))
+                                {
+                                    <div class="col-12">
+                                        <div class="card border-0 shadow-sm">
+                                            <div class="card-header bg-light">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <span class="text-muted small">
+                                                        <i class="bi bi-clock-history me-1"></i>
+                                                        @response.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                                                    </span>
+                                                    <div class="badge bg-primary">
+                                                        Версия шаблона: @group.Template.UpdatedAt.ToString("dd.MM.yyyy")
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="card-body">
+                                                <div class="row g-3">
+                                                    @foreach (var question in group.Template.Questions.OrderBy(q => q.Order))
+                                                    {
+                                                        var answer = response.Answers.FirstOrDefault(a => a.QuestionId == question.Id);
+                                                        <div class="col-12 col-md-6 col-lg-4">
+                                                            <div class="card h-100 border-0 shadow-sm">
+                                                                <div class="card-header bg-white">
+                                                                    <h6 class="mb-0">
+                                                                        <i class="@GetQuestionIcon(question.Type) text-primary me-2"></i>
+                                                                        @question.Text
+                                                                    </h6>
+                                                                </div>
+                                                                <div class="card-body">
+                                                                    @if (answer != null)
+                                                                    {
+                                                                        switch (question.Type)
+                                                                        {
+                                                                            case QuestionType.Text:
+                                                                            case QuestionType.Paragraph:
+                                                                                <div class="d-flex align-items-center gap-2">
+                                                                                    <i class="bi bi-chat-left-text text-muted"></i>
+                                                                                    <span class="text-truncate" style="max-width: 200px">@answer.Text</span>
+                                                                                    @if (answer.Text?.Length > 50)
+                                                                                    {
+                                                                                        <button type="button"
+                                                                                                class="btn btn-link p-0 text-muted"
+                                                                                                data-bs-toggle="popover"
+                                                                                                data-bs-content="@answer.Text">
+                                                                                            <i class="bi bi-arrows-fullscreen"></i>
+                                                                                        </button>
+                                                                                    }
+                                                                                </div>
+                                                                                break;
+                                                                            case QuestionType.Radio:
+                                                                            case QuestionType.Dropdown:
+                                                                                var option = answer.SelectedOptions.FirstOrDefault()?.QuestionOption;
+                                                                                <span class="badge bg-primary rounded-pill">@option?.Text</span>
+                                                                                break;
+                                                                            case QuestionType.Checkbox:
+                                                                                var options = answer.SelectedOptions.Select(so => so.QuestionOption.Text);
+                                                                                <div class="d-flex flex-wrap gap-1">
+                                                                                    @foreach (var opt in options)
+                                                                                    {
+                                                                                        <span class="badge bg-primary rounded-pill">@opt</span>
+                                                                                    }
+                                                                                </div>
+                                                                                break;
+                                                                            case QuestionType.YesNo:
+                                                                                <span class="badge @(answer.Text == "true" ? "bg-success" : "bg-danger") rounded-pill">
+                                                                                    @(answer.Text == "true" ? "Да" : "Нет")
+                                                                                </span>
+                                                                                break;
+                                                                            default:
+                                                                                <span class="text-muted">—</span>
+                                                                                break;
+                                                                        }
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="text-muted">—</span>
+                                                                    }
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Styles {
+    <style>
+        .accordion-button:not(.collapsed) {
+            background-color: #f8f9fa;
+            box-shadow: none;
+        }
+
+        .accordion-item {
+            border-radius: 0.5rem !important;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .card {
+            transition: transform 0.2s;
+        }
+
+            .card:hover {
+                transform: translateY(-3px);
+            }
+
+        .badge.rounded-pill {
+            padding: 0.5em 1em;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        // Инициализация поповеров для длинного текста
+        document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => {
+            new bootstrap.Popover(el, {
+                trigger: 'hover',
+                placement: 'auto',
+                customClass: 'popover-wide',
+                html: true
+            });
+        });
+    </script>
+}
+
+@functions {
+    private string GetQuestionIcon(QuestionType type)
+    {
+        return type switch
+        {
+            QuestionType.Text => "bi-chat-left-text",
+            QuestionType.Paragraph => "bi-text-paragraph",
+            QuestionType.Radio => "bi-ui-radios",
+            QuestionType.Dropdown => "bi-menu-down",
+            QuestionType.Checkbox => "bi-ui-checks",
+            QuestionType.YesNo => "bi-toggle-on",
+            _ => "bi-question-circle"
+        };
+    }
+}

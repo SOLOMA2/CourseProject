@@ -24,22 +24,39 @@ namespace CourseProject.DataUser
         public DbSet<Like> Likes { get; set; }
         public DbSet<View> Views { get; set; }
         public DbSet<Comment> Comments { get; set; }
+        public DbSet<TemplateAccess> TemplateAccess { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Глобальное отключение каскадного удаления
             foreach (var relationship in modelBuilder.Model.GetEntityTypes()
                 .SelectMany(e => e.GetForeignKeys()))
             {
                 relationship.DeleteBehavior = DeleteBehavior.Restrict;
             }
 
-            // Конфигурация Template
+            modelBuilder.Entity<TemplateAccess>(entity =>
+            {
+                entity.HasOne(ta => ta.Template)
+                    .WithMany(t => t.AllowedUsers)
+                    .HasForeignKey(ta => ta.TemplateId)
+                    .OnDelete(DeleteBehavior.Cascade); 
+
+                entity.HasOne(ta => ta.User)
+                    .WithMany() 
+                    .HasForeignKey(ta => ta.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(ta => ta.TemplateId)
+                    .HasDatabaseName("IX_TemplateAccess_TemplateId");
+
+                entity.HasIndex(ta => ta.UserId)
+                    .HasDatabaseName("IX_TemplateAccess_UserId");
+            });
+
             modelBuilder.Entity<Template>(entity =>
             {
-                // Индексы
                 entity.HasIndex(t => t.AuthorId)
                     .IncludeProperties(t => new { t.Title, t.CreatedAt })
                     .HasDatabaseName("IX_Templates_AuthorId")
@@ -52,7 +69,6 @@ namespace CourseProject.DataUser
                     .HasDatabaseName("IX_Templates_CreatedAt")
                     .IsDescending();
 
-                // Связи с явным каскадным удалением
                 entity.HasMany(t => t.Questions)
                     .WithOne(q => q.Template)
                     .OnDelete(DeleteBehavior.Cascade);
@@ -73,7 +89,6 @@ namespace CourseProject.DataUser
                     .WithOne(c => c.Template)
                     .OnDelete(DeleteBehavior.Cascade);
 
-                // Денормализованные счетчики
                 entity.Property(t => t.LikesCount)
                     .HasDefaultValue(0)
                     .ValueGeneratedOnAddOrUpdate();
@@ -87,7 +102,6 @@ namespace CourseProject.DataUser
                     .ValueGeneratedOnAddOrUpdate();
             });
 
-            // Конфигурация Question
             modelBuilder.Entity<Question>(entity =>
             {
                 entity.HasIndex(q => q.TemplateId)
@@ -101,7 +115,6 @@ namespace CourseProject.DataUser
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // Конфигурация Answer
             modelBuilder.Entity<Answer>(entity =>
             {
                 entity.HasIndex(a => a.UserResponseId)
@@ -115,7 +128,6 @@ namespace CourseProject.DataUser
                     .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // Конфигурация FormResponse
             modelBuilder.Entity<FormResponse>(entity =>
             {
                 entity.HasIndex(fr => fr.TemplateId)
@@ -127,7 +139,6 @@ namespace CourseProject.DataUser
                     .IsDescending();
             });
 
-            // Конфигурация Like
             modelBuilder.Entity<Like>(entity =>
             {
                 entity.HasIndex(l => new { l.TemplateId, l.UserId })
@@ -138,7 +149,6 @@ namespace CourseProject.DataUser
                     .HasDatabaseName("IX_Likes_UserId");
             });
 
-            // Конфигурация View
             modelBuilder.Entity<View>(entity =>
             {
                 entity.HasIndex(v => new { v.IPAddress, v.TemplateId })
@@ -148,7 +158,6 @@ namespace CourseProject.DataUser
                     .HasDatabaseName("IX_Views_TemplateId");
             });
 
-            // Конфигурация Comment
             modelBuilder.Entity<Comment>(entity =>
             {
                 entity.HasIndex(c => c.TemplateId)
@@ -161,7 +170,6 @@ namespace CourseProject.DataUser
                     .HasDefaultValueSql("GETUTCDATE()");
             });
 
-            // Конфигурация TemplateTag
             modelBuilder.Entity<TemplateTag>(entity =>
             {
                 entity.HasKey(tt => new { tt.TemplateId, tt.TagId });
@@ -170,7 +178,6 @@ namespace CourseProject.DataUser
                     .HasDatabaseName("IX_TemplateTags_TagId");
             });
 
-            // Конфигурация SelectedOption
             modelBuilder.Entity<SelectedOption>(entity =>
             {
                 entity.HasIndex(so => so.QuestionOptionId)
@@ -178,14 +185,13 @@ namespace CourseProject.DataUser
 
                 entity.HasOne(so => so.QuestionOption)
                     .WithMany(qo => qo.SelectedOptions)
-                    .OnDelete(DeleteBehavior.Restrict); // Исправление для циклической зависимости
+                    .OnDelete(DeleteBehavior.Restrict); 
             });
 
-            // Оптимизация для Identity
             modelBuilder.Entity<AppUser>(entity =>
             {
                 entity.HasIndex(u => u.NormalizedUserName)
-                    .HasDatabaseName("UserNameIndex")
+                    .HasDatabaseName("UserNameIndex")       
                     .IsUnique()
                     .HasFilter("[NormalizedUserName] IS NOT NULL");
 
@@ -193,7 +199,6 @@ namespace CourseProject.DataUser
                     .HasDatabaseName("EmailIndex");
             });
 
-            // Дополнительные оптимизации
             modelBuilder.Entity<QuestionOption>(entity =>
             {
                 entity.HasIndex(qo => qo.QuestionId)

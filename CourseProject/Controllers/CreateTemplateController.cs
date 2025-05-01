@@ -18,9 +18,9 @@ namespace CourseProject.Controllers
         private readonly AppUserDbContext _context;
         private readonly UserManager<AppUser> _userManager;
         private readonly SignInManager<AppUser> _signInManager;
+        private readonly CloudinaryService _cloudinary;
         private readonly ILogger<UserManagerController> _logger;
         private readonly IConfiguration _config;
-
 
         public CreateTemplateController(
             AppUserDbContext context,
@@ -28,7 +28,8 @@ namespace CourseProject.Controllers
             RoleManager<IdentityRole> roleManager,
             SignInManager<AppUser> signInManager,
             ILogger<UserManagerController> logger,
-            IConfiguration config)
+            IConfiguration config ,
+            CloudinaryService cloudinary)
         {
             _context = context;
             _userManager = userManager;
@@ -36,6 +37,7 @@ namespace CourseProject.Controllers
             _signInManager = signInManager;
             _logger = logger;
             _config = config;
+            _cloudinary = cloudinary;
         }
 
         [HttpGet]
@@ -43,31 +45,24 @@ namespace CourseProject.Controllers
         {
             var template = await _context.Templates
                 .Include(t => t.Questions)
-                    .ThenInclude(q => q.Options)
+                .ThenInclude(q => q.Options)
                 .Include(t => t.Tags)
-                    .ThenInclude(t => t.Tag)
+                .ThenInclude(t => t.Tag)
                 .Include(t => t.Topic)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (template == null) return NotFound();
 
-            // Исправление: Используем SelectList вместо списка Topic
             ViewBag.Topics = new SelectList(_context.Topics, "Id", "Name");
             return View("Template", template);
         }
 
-
-        //[HttpGet]
-        //public IActionResult Template()
-        //{
-        //    return View();
-        //}
         [HttpGet]
         public IActionResult Template()
         {
             var model = new Template
             {
-                Questions = new List<Question> { new Question() }, // Инициализация первого вопроса
+                Questions = new List<Question> { new Question() }, 
                 Tags = new List<TemplateTag>(),
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -81,9 +76,9 @@ namespace CourseProject.Controllers
         [Authorize]
         public async Task<IActionResult> Template(
             Template template,
-            IFormFile ImageFile,
+            IFormFile? ImageFile,
             List<string> tags,
-            [FromServices] IWebHostEnvironment hostingEnvironment)
+            List<string> selectedUserIds)
         {
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Challenge();
@@ -103,21 +98,13 @@ namespace CourseProject.Controllers
                 // 1. Сохраняем изображение
                 if (ImageFile != null && ImageFile.Length > 0)
                 {
-                    var uploadsDir = Path.Combine(hostingEnvironment.WebRootPath, "uploads");
-                    var uniqueFileName = Guid.NewGuid() + "_" + ImageFile.FileName;
-                    var filePath = Path.Combine(uploadsDir, uniqueFileName);
-
-                    await using var fileStream = new FileStream(filePath, FileMode.Create);
-                    await ImageFile.CopyToAsync(fileStream);
-
-                    template.ImagePath = "/uploads/" + uniqueFileName;
+                    template.ImagePath = await _cloudinary.UploadImageAsync(ImageFile);
                 }
 
                 // 2. Сохраняем шаблон
                 _context.Templates.Add(template);
                 await _context.SaveChangesAsync();
 
-                // 3. Сохраняем вопросы с опциями
                 // 3. Сохраняем вопросы с опциями
                 foreach (var question in template.Questions)
                 {
@@ -146,6 +133,11 @@ namespace CourseProject.Controllers
                         }
                     }
                 }
+                //Пускай пока висит хз что делать...
+                //template.LinkKey = template.AccessType == AccessType.Link
+                //    ? Guid.NewGuid()
+                //    : Guid.Empty;
+                HandleTemplateAccess(template, selectedUserIds); 
                 await _context.SaveChangesAsync();
 
                 // 4. Обработка тегов
@@ -179,6 +171,10 @@ namespace CourseProject.Controllers
             }
             catch (Exception ex)
             {
+                if (!string.IsNullOrEmpty(template.ImagePath))
+                {
+                    await _cloudinary.DeleteImageAsync(template.ImagePath);
+                }
                 await transaction.RollbackAsync();
                 ModelState.AddModelError("", $"Ошибка при сохранении: {ex.Message}");
                 ViewBag.Topics = new SelectList(_context.Topics, "Id", "Name");
@@ -186,16 +182,65 @@ namespace CourseProject.Controllers
             }
         }
 
+        [HttpGet]
+        public async Task<IActionResult> SearchUsers(string term)
+        {
+            if (string.IsNullOrWhiteSpace(term))
+            {
+                return Json(new List<object>()); 
+            }
+
+            term = term.Trim().ToLower();
+
+            var users = await _context.Users
+                .Where(u =>
+                    u.UserName.ToLower().Contains(term) ||
+                    u.Email.ToLower().Contains(term))
+                .OrderBy(u => u.UserName) 
+                .Take(20) 
+                .Select(u => new
+                {
+                    value = u.Id, 
+                    label = $"{u.UserName} ({u.Email})" 
+                })
+                .ToListAsync();
+
+            return Json(users);
+        }
+
+        private void HandleTemplateAccess(Template template, List<string> selectedUserIds)
+        {
+            if (template?.Id == null || selectedUserIds == null) return;
+
+            var existing = _context.TemplateAccess
+                .Where(ta => ta.TemplateId == template.Id)
+                .ToList();
+
+            _context.TemplateAccess.RemoveRange(existing);
+
+            foreach (var userId in selectedUserIds.Distinct())
+            {
+                if (_context.Users.Any(u => u.Id == userId))
+                {
+                    _context.TemplateAccess.Add(new TemplateAccess
+                    {
+                        TemplateId = template.Id,
+                        UserId = userId
+                    });
+                }
+            }
+        }
+
         [HttpPost]
         [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(
-    int id,
-    Template model,
-    IFormFile ImageFile,
-    bool removeImage = false,
-    List<string> tags = null,
-    [FromServices] IWebHostEnvironment hostingEnvironment = null)
+            int id,
+            Template model,
+            IFormFile? ImageFile,
+            bool removeImage = false,
+            List<string> tags = null,
+            List<string> selectedUserIds = null)
         {
             if (id != model.Id)
             {
@@ -214,12 +259,11 @@ namespace CourseProject.Controllers
             using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
-                // Загрузка существующего шаблона с вопросами и опциями
                 var existingTemplate = await _context.Templates
                     .Include(t => t.Questions)
-                        .ThenInclude(q => q.Options)
+                    .ThenInclude(q => q.Options)
                     .Include(t => t.Tags)
-                        .ThenInclude(tt => tt.Tag)
+                    .ThenInclude(tt => tt.Tag)
                     .FirstOrDefaultAsync(t => t.Id == id);
 
                 if (existingTemplate == null || existingTemplate.AuthorId != user.Id)
@@ -227,47 +271,37 @@ namespace CourseProject.Controllers
                     return NotFound();
                 }
 
-                // Обновление основных полей шаблона
+                string oldImageUrl = existingTemplate.ImagePath;
+
                 existingTemplate.Title = model.Title;
                 existingTemplate.Description = model.Description;
                 existingTemplate.TopicId = model.TopicId;
-                existingTemplate.IsPublic = model.IsPublic;
                 existingTemplate.UpdatedAt = DateTime.UtcNow;
 
-                // Обработка изображения
                 if (removeImage && !string.IsNullOrEmpty(existingTemplate.ImagePath))
                 {
-                    var oldImagePath = Path.Combine(hostingEnvironment.WebRootPath,
-                        existingTemplate.ImagePath.TrimStart('/'));
-                    if (System.IO.File.Exists(oldImagePath))
-                    {
-                        System.IO.File.Delete(oldImagePath);
-                    }
+                    await _cloudinary.DeleteImageAsync(existingTemplate.ImagePath);
                     existingTemplate.ImagePath = null;
                 }
                 else if (ImageFile != null && ImageFile.Length > 0)
                 {
-                    var uploadsDir = Path.Combine(hostingEnvironment.WebRootPath, "uploads");
-                    var uniqueFileName = Guid.NewGuid() + "_" + ImageFile.FileName;
-                    var filePath = Path.Combine(uploadsDir, uniqueFileName);
+                    var newImageUrl = await _cloudinary.UploadImageAsync(ImageFile);
+                    existingTemplate.ImagePath = newImageUrl;
 
-                    await using var fileStream = new FileStream(filePath, FileMode.Create);
-                    await ImageFile.CopyToAsync(fileStream);
-
-                    existingTemplate.ImagePath = "/uploads/" + uniqueFileName;
+                    if (!string.IsNullOrEmpty(oldImageUrl))
+                    {
+                        await _cloudinary.DeleteImageAsync(oldImageUrl);
+                    }
                 }
 
-                // Обновление вопросов
                 foreach (var question in model.Questions)
                 {
-                    if (question.Id == 0) // Новый вопрос
+                    if (question.Id == 0) 
                     {
-                        // Добавляем новый вопрос
                         question.TemplateId = existingTemplate.Id;
                         _context.Questions.Add(question);
-                        await _context.SaveChangesAsync(); // Сохраняем для получения ID
+                        await _context.SaveChangesAsync(); 
 
-                        // Добавляем опции нового вопроса
                         foreach (var option in question.Options)
                         {
                             if (!string.IsNullOrWhiteSpace(option.Text))
@@ -277,23 +311,21 @@ namespace CourseProject.Controllers
                             }
                         }
                     }
-                    else // Существующий вопрос
+                    else 
                     {
                         var existingQuestion = existingTemplate.Questions
                             .FirstOrDefault(q => q.Id == question.Id);
 
                         if (existingQuestion != null)
                         {
-                            // Обновление полей вопроса
                             existingQuestion.Text = question.Text;
                             existingQuestion.Type = question.Type;
                             existingQuestion.IsRequired = question.IsRequired;
                             existingQuestion.Order = question.Order;
 
-                            // Обработка опций
                             foreach (var option in question.Options)
                             {
-                                if (option.Id == 0) // Новая опция
+                                if (option.Id == 0) 
                                 {
                                     if (!string.IsNullOrWhiteSpace(option.Text))
                                     {
@@ -301,7 +333,7 @@ namespace CourseProject.Controllers
                                         _context.QuestionOptions.Add(option);
                                     }
                                 }
-                                else // Обновление существующей опции
+                                else 
                                 {
                                     var existingOption = existingQuestion.Options
                                         .FirstOrDefault(o => o.Id == option.Id);
@@ -313,7 +345,6 @@ namespace CourseProject.Controllers
                                 }
                             }
 
-                            // Удаление отсутствующих опций
                             var optionsToDelete = existingQuestion.Options
                                 .Where(o => !question.Options.Any(qo => qo.Id == o.Id))
                                 .ToList();
@@ -326,14 +357,12 @@ namespace CourseProject.Controllers
                     }
                 }
 
-                // Удаление вопросов, отсутствующих в модели
                 var questionsToDelete = existingTemplate.Questions
                     .Where(q => !model.Questions.Any(mq => mq.Id == q.Id))
                     .ToList();
 
                 foreach (var question in questionsToDelete)
                 {
-                    // Удаляем связанные опции
                     var options = await _context.QuestionOptions
                         .Where(o => o.QuestionId == question.Id)
                         .ToListAsync();
@@ -341,8 +370,8 @@ namespace CourseProject.Controllers
                     _context.QuestionOptions.RemoveRange(options);
                     _context.Questions.Remove(question);
                 }
+                HandleTemplateAccess(existingTemplate, selectedUserIds);
 
-                // Обновление тегов
                 var existingTags = existingTemplate.Tags.ToList();
                 foreach (var existingTag in existingTags)
                 {

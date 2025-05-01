@@ -25,6 +25,8 @@ namespace CourseProject.Models.MainModelViews
         public int? MaxValue { get; set; }
 
         public int TemplateId { get; set; }
+        [ValidateNever]
+        public string? TextType { get; set; }
         [ValidateNever] 
         [ForeignKey("TemplateId")]
         public Template Template { get; set; }

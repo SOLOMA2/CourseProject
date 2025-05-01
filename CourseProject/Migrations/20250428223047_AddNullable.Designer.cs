@@ -4,6 +4,7 @@ using CourseProject.DataUser;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CourseProject.Migrations
 {
     [DbContext(typeof(AppUserDbContext))]
-    partial class AppUserDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250428223047_AddNullable")]
+    partial class AddNullable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -236,37 +239,6 @@ namespace CourseProject.Migrations
                     b.ToTable("Tags");
                 });
 
-            modelBuilder.Entity("CourseProject.Models.MainModelViews.HelpModel.TemplateAccess", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AppUserId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<int>("TemplateId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AppUserId");
-
-                    b.HasIndex("TemplateId")
-                        .HasDatabaseName("IX_TemplateAccess_TemplateId");
-
-                    b.HasIndex("UserId")
-                        .HasDatabaseName("IX_TemplateAccess_UserId");
-
-                    b.ToTable("TemplateAccess");
-                });
-
             modelBuilder.Entity("CourseProject.Models.MainModelViews.HelpModel.TemplateTag", b =>
                 {
                     b.Property<int>("TemplateId")
@@ -314,7 +286,7 @@ namespace CourseProject.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<bool>("IsRequired")
+                    b.Property<bool?>("IsRequired")
                         .HasColumnType("bit");
 
                     b.Property<int?>("MaxLength")
@@ -341,6 +313,7 @@ namespace CourseProject.Migrations
                         .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("TextType")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Type")
@@ -545,9 +518,6 @@ namespace CourseProject.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("AccessType")
-                        .HasColumnType("int");
-
                     b.Property<string>("AuthorId")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
@@ -569,13 +539,13 @@ namespace CourseProject.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
+                    b.Property<bool?>("IsPublic")
+                        .HasColumnType("bit");
+
                     b.Property<int>("LikesCount")
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("int")
                         .HasDefaultValue(0);
-
-                    b.Property<Guid>("LinkKey")
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -710,29 +680,6 @@ namespace CourseProject.Migrations
 
                     b.HasOne("CourseProject.Models.AppUser", "User")
                         .WithMany("Likes")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Template");
-
-                    b.Navigation("User");
-                });
-
-            modelBuilder.Entity("CourseProject.Models.MainModelViews.HelpModel.TemplateAccess", b =>
-                {
-                    b.HasOne("CourseProject.Models.AppUser", null)
-                        .WithMany("AllowedTemplates")
-                        .HasForeignKey("AppUserId");
-
-                    b.HasOne("Template", "Template")
-                        .WithMany("AllowedUsers")
-                        .HasForeignKey("TemplateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("CourseProject.Models.AppUser", "User")
-                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -885,8 +832,6 @@ namespace CourseProject.Migrations
 
             modelBuilder.Entity("CourseProject.Models.AppUser", b =>
                 {
-                    b.Navigation("AllowedTemplates");
-
                     b.Navigation("Comments");
 
                     b.Navigation("Likes");
@@ -930,8 +875,6 @@ namespace CourseProject.Migrations
 
             modelBuilder.Entity("Template", b =>
                 {
-                    b.Navigation("AllowedUsers");
-
                     b.Navigation("Comments");
 
                     b.Navigation("Likes");

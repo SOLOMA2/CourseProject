@@ -11,6 +11,8 @@ builder.Services.AddSignalR();
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+builder.Services.AddScoped<CloudinaryService>();
+
 builder.Services.AddDbContext<AppUserDbContext>(options =>
 {
     options.UseSqlServer(

@@ -20,19 +20,20 @@ namespace CourseProject.Controllers
             _context = context;
             _userManager = userManager;
         }
+
         [HttpGet]
         public async Task<IActionResult> Profile()
         {
             var user = await _userManager.GetUserAsync(User);
+            bool isAdmin = await _userManager.IsInRoleAsync(user, "Admin");
+
             var templates = await _context.Templates
-                .Include(t => t.Author)    
+                .Include(t => t.Author)
                 .Include(t => t.Topic)
-                .Include(t => t.Questions)
-                            .Include(t => t.Likes) // Включаем лайки
-            .Include(t => t.Views) // Включаем просмотры
-                .Where(t => t.AuthorId == user.Id)
-                .OrderByDescending(t => t.CreatedAt)
-                .AsNoTracking() 
+                .Include(t => t.Likes)
+                .Include(t => t.Views)
+                .Where(t => isAdmin || t.AuthorId == user.Id)
+                .AsNoTracking()
                 .ToListAsync();
 
             return View(new UserProfileVМ
@@ -48,13 +49,11 @@ namespace CourseProject.Controllers
         {
             var user = await _userManager.GetUserAsync(User);
 
-            // Парсим ID шаблонов
             var ids = templateIds?
                 .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(int.Parse)
                 .ToList() ?? new List<int>();
 
-            // Валидация
             if (ids.Count == 0 || user == null)
             {
                 TempData["Error"] = "Не выбрано ни одного шаблона для удаления";
@@ -65,7 +64,10 @@ namespace CourseProject.Controllers
 
             try
             {
-                // Удаление связанных данных
+                await _context.TemplateAccess
+                    .Where(ta => ids.Contains(ta.TemplateId))
+                    .ExecuteDeleteAsync();
+
                 await _context.SelectedOptions
                     .Where(so => so.Answer.UserResponse.Template.AuthorId == user.Id
                         && ids.Contains(so.Answer.UserResponse.TemplateId))
@@ -81,7 +83,6 @@ namespace CourseProject.Controllers
                         && ids.Contains(fr.TemplateId))
                     .ExecuteDeleteAsync();
 
-                // Непосредственное удаление шаблонов
                 var deletedCount = await _context.Templates
                     .Where(t => ids.Contains(t.Id) && t.AuthorId == user.Id)
                     .ExecuteDeleteAsync();

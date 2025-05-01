@@ -1,5 +1,7 @@
 ﻿@{
     ViewData["Title"] = "Ответ сохранён";
+    bool isCommentSaved = ViewBag.IsCommentSaved;
+    bool isAnswersSaved = ViewBag.IsAnswersSaved;
 }
 
 <div class="container min-vh-100 d-flex align-items-center">
@@ -19,7 +21,28 @@
 
                     <!-- Основной текст -->
                     <p class="lead mb-4 fs-5">
-                        Ваши ответы успешно сохранены.<br>
+                        @if (isAnswersSaved && isCommentSaved)
+                        {
+                            <text>
+                                Ваши ответы и комментарий успешно сохранены.<br>
+                                Мы ценим ваш вклад!
+                            </text>
+                        }
+                        else if (isAnswersSaved)
+                        {
+                            <text>
+                                Ваши ответы успешно сохранены.<br>
+                                Спасибо за участие!
+                            </text>
+                        }
+                        else if (isCommentSaved)
+                        {
+                            <text>
+                                Ваш комментарий успешно сохранён.<br>
+                                Благодарим за обратную связь!
+                            </text>
+                        }
+                        <br>
                         Вы можете закрыть страницу или вернуться на главную.
                     </p>
 

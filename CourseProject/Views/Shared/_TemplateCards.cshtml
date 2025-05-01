@@ -6,9 +6,26 @@
     {
         <div class="col">
             <div class="card h-100 shadow-sm template-card">
+                @if (template.AccessType == AccessType.Private)
+                {
+                    <div class="card-header bg-warning text-dark">
+                        <i class="bi bi-lock"></i> Приватный доступ
+                    </div>
+                }
                 @if (!string.IsNullOrEmpty(template.ImagePath))
                 {
                     <img src="@template.ImagePath" class="card-img-top" alt="@template.Title">
+                }
+                else
+                {
+                    <div class="d-flex flex-column justify-content-center align-items-center h-100 bg-light text-muted p-3">
+                        <i class="bi bi-image fs-1"></i>
+                        <small class="text-center mt-2">Изображение не добавлено</small>
+                    </div>
+                }
+                @if (template.Likes.Count > 0)
+                {
+                    <span class="badge bg-danger badge-popular">Популярный</span>
                 }
                 @if (template.CreatedAt > DateTime.Now.AddDays(-3))
                 {
@@ -25,6 +42,10 @@
                             {
                                 <span class="badge bg-info">@tag.Tag.Name</span>
                             }
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark">Теги не указаны</span>
                         }
                     </div>
 

@@ -17,7 +17,6 @@ public class Template
     public string Description { get; set; }
 
     public TemplateType Type { get; set; }
-    public bool IsPublic { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
@@ -25,7 +24,7 @@ public class Template
     public string? ImagePath { get; set; }
 
     [NotMapped]
-    public IFormFile ImageFile { get; set; }
+    public IFormFile? ImageFile { get; set; }
 
     [ValidateNever]
     public string AuthorId { get; set; }
@@ -56,4 +55,10 @@ public class Template
 
     public List<Comment> Comments { get; set; } = new List<Comment>();
     public int CommentsCount { get; set; }
+    public Guid LinkKey { get; set; } = Guid.Empty;
+    [ValidateNever]
+    public List<TemplateAccess> AllowedUsers { get; set; } = new List<TemplateAccess>();
+
+    public AccessType AccessType { get; set; }
+
 }

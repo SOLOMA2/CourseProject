@@ -5,7 +5,7 @@
 }
 
 <div class="container mt-4">
-    <!-- Улучшенный поиск -->
+    <!-- Поиск и кнопка создания -->
     <div class="row mb-4">
         <div class="col-md-8">
             <form method="get" asp-action="Index" class="shadow-sm">
@@ -38,7 +38,7 @@
         </div>
     </div>
 
-    <!-- Облако тегов с реальными данными -->
+    <!-- Облако тегов -->
     <div class="card mb-4 shadow-sm">
         <div class="card-header bg-primary text-white">
             <h5 class="mb-0"><i class="bi bi-tags"></i> Популярные теги</h5>
@@ -49,7 +49,10 @@
                 <div class="tag-cloud">
                     @foreach (var tagInfo in Model.PopularTags.OrderByDescending(t => t.UsageCount))
                     {
-                        <a href="#" class="badge bg-secondary me-1 mb-2 hover-scale">
+                        <a asp-action="Index"
+                           asp-controller="Home"
+                           asp-route-tag="@tagInfo.Tag.Name"
+                           class="badge bg-secondary me-1 mb-2 hover-scale">
                             @tagInfo.Tag.Name
                             <span class="badge bg-light text-dark ms-1">@tagInfo.UsageCount</span>
                         </a>
@@ -63,16 +66,38 @@
         </div>
     </div>
 
-    <!-- Унифицированные карточки шаблонов -->
-    <h3 class="mb-3"><i class="bi bi-fire"></i> Популярные шаблоны</h3>
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
-        @await Html.PartialAsync("_TemplateCards", Model.PopularTemplates)
-    </div>
+    <!-- Блок результатов поиска/тегов -->
+    @if (!string.IsNullOrEmpty(Model.SearchQuery) || !string.IsNullOrEmpty(Model.Tag))
+    {
+        <h3 class="mb-3">
+            Результаты поиска
+            @if (!string.IsNullOrEmpty(Model.SearchQuery))
+            {
+                <text>для "@Model.SearchQuery"</text>
+            }
+            @if (!string.IsNullOrEmpty(Model.Tag))
+            {
+                <text>по тегу "@Model.Tag"</text>
+            }
+        </h3>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
+            @await Html.PartialAsync("_TemplateCards", Model.SearchResults)
+        </div>
+    }
+    else
+    {
+        <!-- Популярные шаблоны -->
+        <h3 class="mb-3"><i class="bi bi-fire"></i> Популярные шаблоны</h3>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5">
+            @await Html.PartialAsync("_TemplateCards", Model.PopularTemplates)
+        </div>
 
-    <h3 class="mb-3"><i class="bi bi-clock-history"></i> Новые шаблоны</h3>
-    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-        @await Html.PartialAsync("_TemplateCards", Model.RecentTemplates)
-    </div>
+        <!-- Новые шаблоны -->
+        <h3 class="mb-3"><i class="bi bi-clock-history"></i> Новые шаблоны</h3>
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            @await Html.PartialAsync("_TemplateCards", Model.RecentTemplates)
+        </div>
+    }
 </div>
 @section Scripts {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
@@ -176,6 +201,32 @@
         .stats-icon {
             font-size: 0.9rem;
             margin-right: 0.3rem;
+        }
+
+        .badge-popular {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 0.9rem;
+            z-index: 2;
+        }
+
+        .badge-new {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 0.9rem;
+            z-index: 2;
+        }
+
+        .card-img-top {
+            height: 200px;
+            background-color: #f8f9fa;
+            border-bottom: 1px solid rgba(0,0,0,0.125);
+        }
+
+        .bi-image {
+            opacity: 0.5;
         }
     </style>
 }

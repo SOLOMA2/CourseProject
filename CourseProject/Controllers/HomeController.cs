@@ -16,7 +16,6 @@ namespace CourseProject.Controllers
         private readonly ILogger<UserManagerController> _logger;
         private readonly UserManager<AppUser> _userManager;
 
-
         public HomeController(AppUserDbContext context, ILogger<UserManagerController> logger, UserManager<AppUser> userManager)
         {
             _context = context;
@@ -24,49 +23,74 @@ namespace CourseProject.Controllers
             _userManager = userManager;
         }
 
-        // Обновленный код контроллера HomeController.cs
-        // Обновленный код контроллера HomeController.cs
-        public async Task<IActionResult> Index(string searchQuery)
+        public async Task<IActionResult> Index(string searchQuery, string tag)
         {
             try
             {
                 var currentUser = await _userManager.GetUserAsync(User);
                 var userId = currentUser?.Id;
 
-                // Базовый запрос с включением всех зависимостей
-                var query = _context.Templates
-            .Include(t => t.Author)
-            .Include(t => t.Tags)
-                .ThenInclude(tt => tt.Tag)
-            .Include(t => t.Likes) // Включаем лайки
-            .Include(t => t.Views) // Включаем просмотры
-            .AsQueryable();
+                IQueryable<Template> baseQuery = _context.Templates
+                    .Include(t => t.Author)
+                    .Include(t => t.Tags)
+                     .ThenInclude(tt => tt.Tag)
+                    .Include(t => t.Likes)
+                    .Include(t => t.Views)
+                    .Include(t => t.Questions)
+                    .Include(t => t.Comments)
+                    .Include(t => t.AllowedUsers) 
+                    .AsQueryable();
 
-                // Поиск (раскомментируйте при необходимости)
-                // if (!string.IsNullOrEmpty(searchQuery))
-                // {
-                //     query = query.Where(t => 
-                //         t.Title.Contains(searchQuery) || 
-                //         t.Description.Contains(searchQuery) ||
-                //         t.Tags.Any(tt => tt.Tag.Name.Contains(searchQuery)));
-                // }
+                if (userId == null)
+                {
+                    baseQuery = baseQuery.Where(t => t.AccessType == AccessType.Public);
+                }
+                else
+                {
+                    baseQuery = baseQuery.Where(t =>
+                        t.AccessType == AccessType.Public ||
+                        t.AccessType == AccessType.Link ||
+                        (t.AccessType == AccessType.Private &&
+                         t.AllowedUsers.Any(au => au.UserId == userId)));
+                }
 
-                var templates = await query
-                    .OrderByDescending(t => t.CreatedAt)
+                if (!string.IsNullOrEmpty(tag))
+                {
+                    baseQuery = baseQuery.Where(t =>
+                        t.Tags.Any(tt => tt.Tag.Name == tag));
+                }
+
+                if (!string.IsNullOrEmpty(searchQuery))
+                {
+                    var cleanQuery = searchQuery.Trim().ToLower();
+                    baseQuery = baseQuery.Where(t =>
+                        t.Title.ToLower().Contains(cleanQuery) ||
+                        t.Description.ToLower().Contains(cleanQuery) ||
+                        t.Tags.Any(tt => tt.Tag.Name.ToLower().Contains(cleanQuery)));
+                }
+
+                var popularTemplates = await baseQuery
+                    .OrderByDescending(t => t.Likes.Count)
+                    .ThenByDescending(t => t.Views.Count)
+                    .Take(6)
                     .ToListAsync();
 
-                // Помечаем лайки текущего пользователя
+                var recentTemplates = await baseQuery
+                    .OrderByDescending(t => t.CreatedAt)
+                    .Take(6)
+                    .ToListAsync();
+
                 if (userId != null)
                 {
-                    foreach (var template in templates)
+                    foreach (var template in popularTemplates.Concat(recentTemplates))
                     {
                         template.IsLikedByCurrentUser = template.Likes
                             .Any(l => l.UserId == userId);
                     }
                 }
 
-                // Получаем популярные теги
                 var popularTags = await _context.Tags
+                    .Where(t => t.TemplateTags.Any()) 
                     .Select(t => new TagInfo
                     {
                         Tag = t,
@@ -78,10 +102,14 @@ namespace CourseProject.Controllers
 
                 var model = new HomeIndexViewModel
                 {
-                    PopularTemplates = templates.Take(6),
-                    RecentTemplates = templates.OrderByDescending(t => t.UpdatedAt).Take(6),
+                    PopularTemplates = popularTemplates,
+                    RecentTemplates = recentTemplates,
                     PopularTags = popularTags,
-                    SearchQuery = searchQuery
+                    SearchQuery = searchQuery,
+                    Tag = tag,
+                    SearchResults = (!string.IsNullOrEmpty(searchQuery) || !string.IsNullOrEmpty(tag))
+                        ? await baseQuery.ToListAsync()
+                        : null
                 };
 
                 return View(model);
@@ -89,23 +117,14 @@ namespace CourseProject.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Ошибка при загрузке главной страницы");
-                return View(new HomeIndexViewModel());
+                return View(new HomeIndexViewModel
+                {
+                    PopularTemplates = new List<Template>(),
+                    RecentTemplates = new List<Template>(),
+                    PopularTags = new List<TagInfo>()
+                });
             }
         }
 
-
-        private async Task<List<TagInfo>> GetPopularTagsAsync()
-        {
-            return await _context.Tags
-                .Include(t => t.TemplateTags)
-                .Select(t => new TagInfo
-                {
-                    Tag = t,
-                    UsageCount = t.TemplateTags.Count
-                })
-                .OrderByDescending(t => t.UsageCount)
-                .Take(20)
-                .ToListAsync();
-        }
     }
 }

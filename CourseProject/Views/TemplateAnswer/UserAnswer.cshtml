@@ -15,9 +15,9 @@
                     @if (!string.IsNullOrEmpty(Model.Template.ImagePath))
                     {
                         <img src="@Model.Template.ImagePath"
-                        class="img-fluid rounded-circle"
-                        style="width: 80px; height: 80px; object-fit: cover;"
-                        alt="Изображение формы">
+                             class="img-fluid rounded-circle"
+                             style="width: 80px; height: 80px; object-fit: cover;"
+                             alt="Изображение формы">
                     }
                     <div>
                         <h1 class="mb-1">@Model.Template.Title</h1>
@@ -39,7 +39,7 @@
                         </div>
                         <h4 class="mb-0">
                             @question.Text
-                            @if (question.IsRequired)
+                            @if (question.IsRequired == true)
                             {
                                 <span class="text-danger">*</span>
                             }
@@ -52,20 +52,21 @@
                     {
                         case QuestionType.Text:
                             <input type="text"
-                            name="Answers[@question.Id].Text"
-                            class="form-control response-input"
-                            placeholder="Краткий ответ"
-                            maxlength="@question.MaxLength"
-                            required="@question.IsRequired">
+                                   name="Answers[@question.Id].Text"
+                                   class="form-control response-input"
+                                   placeholder="Краткий ответ"
+                                   maxlength="@question.MaxLength"
+                                   required="@question.IsRequired"
+                                   data-text-type="@question.TextType">
                             break;
 
                         case QuestionType.Paragraph:
                             <textarea name="Answers[@question.Id].Text"
-                            class="form-control response-textarea"
-                            rows="3"
-                            placeholder="Развернутый ответ"
-                            maxlength="@question.MaxLength"
-                            required="@question.IsRequired"></textarea>
+                                      class="form-control response-textarea"
+                                      rows="3"
+                                      placeholder="Развернутый ответ"
+                                      maxlength="@question.MaxLength"
+                                      required="@question.IsRequired"></textarea>
                             break;
 
                         case QuestionType.Radio:
@@ -73,11 +74,11 @@
                             {
                                 <div class="form-check mb-2">
                                     <input class="form-check-input"
-                                    type="radio"
-                                    name="Answers[@question.Id].SelectedOptions"
-                                    value="@option.Id"
-                                    id="radio_@option.Id"
-                                    required="@question.IsRequired">
+                                           type="radio"
+                                           name="Answers[@question.Id].SelectedOptions"
+                                           value="@option.Id"
+                                           id="radio_@option.Id"
+                                           required="@question.IsRequired">
                                     <label class="form-check-label w-100" for="radio_@option.Id">
                                         <div class="d-flex align-items-center gap-2">
                                             <div class="radio-indicator"></div>
@@ -93,10 +94,10 @@
                             {
                                 <div class="form-check mb-2">
                                     <input class="form-check-input"
-                                    type="checkbox"
-                                    name="Answers[@question.Id].SelectedOptions"
-                                    value="@option.Id"
-                                    id="check_@option.Id">
+                                           type="checkbox"
+                                           name="Answers[@question.Id].SelectedOptions"
+                                           value="@option.Id"
+                                           id="check_@option.Id">
                                     <label class="form-check-label w-100" for="check_@option.Id">
                                         <div class="d-flex align-items-center gap-2">
                                             <div class="checkbox-indicator"></div>
@@ -109,8 +110,8 @@
 
                         case QuestionType.Dropdown:
                             <select class="form-select"
-                            name="Answers[@question.Id].SelectedOptions"
-                            required="@question.IsRequired">
+                                    name="Answers[@question.Id].SelectedOptions"
+                                    required="@question.IsRequired">
                                 <option value="">Выберите вариант</option>
                                 @foreach (var option in question.Options)
                                 {
@@ -122,19 +123,19 @@
                         case QuestionType.YesNo:
                             <div class="yesno-group btn-group w-100">
                                 <button type="button"
-                                class="btn btn-lg @(GetYesNoClass(question.Id, true))"
-                                data-value="true">
+                                        class="btn btn-lg @(GetYesNoClass(question.Id, true))"
+                                        data-value="true">
                                     <i class="bi bi-check2-circle me-2"></i>Да
                                 </button>
                                 <button type="button"
-                                class="btn btn-lg @(GetYesNoClass(question.Id, false))"
-                                data-value="false">
+                                        class="btn btn-lg @(GetYesNoClass(question.Id, false))"
+                                        data-value="false">
                                     <i class="bi bi-x-circle me-2"></i>Нет
                                 </button>
                                 <input type="hidden"
-                                name="Answers[@question.Id].Text"
-                                value="@(GetYesNoValue(question.Id))"
-                                required="@question.IsRequired">
+                                       name="Answers[@question.Id].Text"
+                                       value="@(GetYesNoValue(question.Id))"
+                                       required="@question.IsRequired">
                             </div>
                             break;
                     }
@@ -142,54 +143,15 @@
                     <!-- Валидация -->
                     <div class="validation-errors mt-2">
                         <span class="text-danger"
-                        data-valmsg-for="Answers[@question.Id].Text"
-                        data-valmsg-replace="true"></span>
+                              data-valmsg-for="Answers[@question.Id].Text"
+                              data-valmsg-replace="true"></span>
                         <span class="text-danger"
-                        data-valmsg-for="Answers[@question.Id].SelectedOptions"
-                        data-valmsg-replace="true"></span>
+                              data-valmsg-for="Answers[@question.Id].SelectedOptions"
+                              data-valmsg-replace="true"></span>
                     </div>
                 </div>
             </div>
         }
-
-        <!-- После блока с вопросами -->
-        <div class="comments-section">
-            <h3 class="mb-4">
-                <i class="bi bi-chat"></i> Комментарии
-                <span id="commentsCount" class="badge bg-primary">@Model.Template.Comments.Count</span>
-            </h3>
-
-            <div id="commentsList" class="mb-4">
-                @foreach (var comment in Model.Template.Comments)
-                {
-                    <div class="comment card mb-3">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center gap-2 mb-2">
-@*                                 <img src="@comment.Author.ProfileImageUrl"
-                                     class="rounded-circle"
-                                     style="width:40px;height:40px;object-fit:cover"> *@
-                                <h5 class="mb-0">@comment.Author.UserName</h5>
-                            </div>
-                            <p class="mb-0">@comment.Content</p>
-                            <small class="text-muted">@comment.CreatedAt.ToString("g")</small>
-                        </div>
-                    </div>
-                }
-            </div>
-
-            @if (User.Identity.IsAuthenticated)
-            {
-                <div class="comment-form">
-                    <textarea id="commentInput"
-                              class="form-control mb-2"
-                              placeholder="Ваш комментарий..."
-                              rows="3"></textarea>
-                    <button id="sendComment" class="btn btn-primary">
-                        <i class="bi bi-send"></i> Отправить
-                    </button>
-                </div>
-            }
-        </div>
 
         <!-- Панель отправки -->
         <div class="sticky-submit-bar">
@@ -199,10 +161,10 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="progress" style="width: 200px; height: 10px">
                                 <div class="progress-bar" role="progressbar"
-                                style="width: @CalculateProgress())%"
-                                aria-valuenow="@CalculateProgress())"
-                                aria-valuemin="0"
-                                aria-valuemax="100"></div>
+                                     style="width: @CalculateProgress()%"
+                                     aria-valuenow="@CalculateProgress()"
+                                     aria-valuemin="0"
+                                     aria-valuemax="100"></div>
                             </div>
                             <button type="submit" class="btn btn-primary btn-lg">
                                 <i class="bi bi-send-check me-2"></i>Отправить
@@ -213,6 +175,44 @@
             </div>
         </div>
     </form>
+
+    <!-- Секция комментариев вне формы -->
+    <div class="comments-section mt-5">
+        <h3 class="mb-4">
+            <i class="bi bi-chat"></i> Комментарии
+            <span id="commentsCount" class="badge bg-primary">@Model.Template.Comments.Count</span>
+        </h3>
+
+        
+        <div class="comment-form">
+            <textarea id="commentInput"
+                        class="form-control mb-2"
+                        placeholder="Ваш комментарий..."
+                        rows="3"></textarea>
+            <button id="sendComment" class="btn btn-primary mb-2">
+                <i class="bi bi-send"></i> Отправить
+            </button>
+        </div>
+        
+
+        <div id="commentsList" class="mb-4">
+            @foreach (var comment in Model.Template.Comments)
+            {
+                <div class="comment card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            @* <img src="@comment.Author.ProfileImageUrl"
+                                 class="rounded-circle"
+                                 style="width:40px;height:40px;object-fit:cover"> *@
+                            <h5 class="mb-0">@comment.Author.UserName</h5>
+                        </div>
+                        <p class="mb-0">@comment.Content</p>
+                        <small class="text-muted">@comment.CreatedAt.ToString("g")</small>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
 </div>
 
 @section Scripts {
@@ -227,14 +227,14 @@
 
         // 2. Обработчик отправки комментария
         document.getElementById('sendComment')?.addEventListener('click', async () => {
-            try {
-                const commentText = document.getElementById('commentInput').value;
-                const templateId = @Model.Template.Id;
+            const commentText = document.getElementById('commentInput').value;
+            const templateId = @Model.Template.Id;
 
+            try {
                 await commentHub.invoke("SendComment", templateId, commentText);
                 document.getElementById('commentInput').value = '';
             } catch (err) {
-                console.error('Ошибка:', err);
+                console.error('Ошибка отправки:', err);
             }
         });
 
@@ -299,6 +299,49 @@
             commentConnection.start().catch(console.error);
             initTooltips();
         });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Инициализация валидации для текстовых полей
+            document.querySelectorAll('[data-text-type]').forEach(input => {
+                const textType = input.dataset.textType;
+
+                // Устанавливаем тип и паттерн в зависимости от data-text-type
+                switch(textType) {
+                    case 'number':
+                        input.type = 'number';
+                        input.placeholder = 'Введите число';
+                        break;
+                    case 'date':
+                        input.type = 'date';
+                        break;
+                    case 'time':
+                        input.type = 'time';
+                        break;
+                    case 'email':
+                        input.type = 'email';
+                        input.placeholder = 'example@email.com';
+                        break;
+                }
+
+                // Кастомные сообщения об ошибках
+                input.addEventListener('invalid', function(e) {
+                    const messages = {
+                        number: 'Пожалуйста, введите число',
+                        date: 'Выберите дату из календаря',
+                        time: 'Выберите время из списка',
+                        email: 'Введите корректный email',
+                        text: 'Это поле обязательно для заполнения'
+                    };
+
+                    e.target.setCustomValidity(messages[textType] || 'Неверное значение');
+                });
+
+                input.addEventListener('input', function(e) {
+                    e.target.setCustomValidity('');
+                });
+            });
+        });
+
     </script>
 }
 
@@ -456,13 +499,24 @@
         }
 
         .sticky-submit-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(255,255,255,0.95);
-            padding: 1rem 0;
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+            position: -webkit-sticky;
+            position: sticky;
+            bottom: 20px;
+            z-index: 1020;
+            margin-top: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .comments-section {
+            position: relative;
+            z-index: 1010;
+            background: white;
+            padding-top: 20px;
+            margin-top: -60px;
+        }
+
+        .sticky-submit-bar .card {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;
         }
     </style>
 }

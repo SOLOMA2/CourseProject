@@ -14,7 +14,6 @@ namespace CourseProject.Controllers
         private readonly ILogger<UserManagerController> _logger;
         private readonly UserManager<AppUser> _userManager;
 
-
         public ManagerAnswersController(AppUserDbContext context, ILogger<UserManagerController> logger, UserManager<AppUser> userManager)
         {
             _context = context;
@@ -29,14 +28,14 @@ namespace CourseProject.Controllers
 
             var templates = await _context.Templates
                 .Where(t => t.AuthorId == userId)
-                .Include(t => t.Questions) // Включаем вопросы
-                    .ThenInclude(q => q.Options) // Для каждого вопроса включаем его Options
-                .Include(t => t.Responses) // Включаем ответы на шаблон
-                    .ThenInclude(r => r.Answers) // Для каждого ответа включаем Answers
-                        .ThenInclude(a => a.SelectedOptions) // Для каждого ответа включаем SelectedOptions
-                            .ThenInclude(so => so.QuestionOption) // Для SelectedOption включаем QuestionOption
+                .Include(t => t.Questions) 
+                .ThenInclude(q => q.Options) 
+                .Include(t => t.Responses) 
+                .ThenInclude(r => r.Answers) 
+                .ThenInclude(a => a.SelectedOptions) 
+                .ThenInclude(so => so.QuestionOption) 
                 .Include(t => t.Responses)
-                    .ThenInclude(r => r.User) // Включаем пользователя для каждого ответа
+                .ThenInclude(r => r.User) 
                 .OrderByDescending(t => t.CreatedAt)
                 .AsNoTracking()
                 .ToListAsync();

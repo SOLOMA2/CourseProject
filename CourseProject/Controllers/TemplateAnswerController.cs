@@ -16,8 +16,7 @@ namespace CourseProject.Controllers
     {
         private readonly AppUserDbContext _context;
         private readonly UserManager<AppUser> _userManager;
-        private readonly ILogger<TemplateAnswerController> _logger; // Новое поле
-
+        private readonly ILogger<TemplateAnswerController> _logger; 
 
         public TemplateAnswerController(
             AppUserDbContext context,
@@ -34,12 +33,12 @@ namespace CourseProject.Controllers
             if (user == null) return Challenge();
 
             var template = await _context.Templates
-         .Include(t => t.Views)
-         .Include(t => t.Comments)
-             .ThenInclude(c => c.Author)
-         .Include(t => t.Questions)
-             .ThenInclude(q => q.Options)
-         .FirstOrDefaultAsync(t => t.Id == templateId);
+                .Include(t => t.Views)
+                .Include(t => t.Comments)
+                .ThenInclude(c => c.Author)
+                .Include(t => t.Questions)
+                .ThenInclude(q => q.Options)
+                .FirstOrDefaultAsync(t => t.Id == templateId);
 
             if (template == null) return NotFound();
 
@@ -50,7 +49,7 @@ namespace CourseProject.Controllers
                 Template = template,
                 Answers = new List<Answer>()
             };
-            // Трекинг просмотра
+
             var view = new View
             {
                 TemplateId = templateId,
@@ -61,17 +60,16 @@ namespace CourseProject.Controllers
             _context.Views.Add(view);
             await _context.SaveChangesAsync();
 
-            // Получаем актуальное количество просмотров
             var updatedViewsCount = await _context.Views
                 .CountAsync(v => v.TemplateId == templateId);
 
-            // Отправка обновления через хаб
             var viewHub = HttpContext.RequestServices.GetRequiredService<IHubContext<ViewHub>>();
             await viewHub.Clients.All.SendAsync("ReceiveViewUpdate", templateId, updatedViewsCount);
             return View(response);
         }
 
         [HttpPost]
+        [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UserAnswer(FormResponse formResponse)
         {
@@ -140,6 +138,40 @@ namespace CourseProject.Controllers
                 _context.FormResponses.Add(formResponse);
                 await _context.SaveChangesAsync();
 
+                bool isCommentSaved = false;
+                var commentContent = Request.Form["comment"];
+
+                if (!string.IsNullOrWhiteSpace(commentContent))
+                {
+                    var comment = new Comment
+                    {
+                        Content = commentContent,
+                        TemplateId = formResponse.TemplateId,
+                        AuthorId = user.Id,
+                        CreatedAt = DateTime.UtcNow
+                    };
+
+                    _context.Comments.Add(comment);
+                    await _context.SaveChangesAsync();
+
+                    isCommentSaved = true;
+
+                    var hubContext = HttpContext.RequestServices
+                        .GetRequiredService<IHubContext<CommentHub>>();
+
+                    await hubContext.Clients.All.SendAsync("ReceiveNewComment",
+                        comment.TemplateId,
+                        new
+                        {
+                            content = comment.Content,
+                            authorName = user.UserName,
+                            date = comment.CreatedAt
+                        });
+                }
+
+                TempData["IsCommentSaved"] = isCommentSaved;
+                TempData["IsAnswersSaved"] = true;
+
                 return RedirectToAction("Success");
             }
             catch (Exception ex)
@@ -151,6 +183,7 @@ namespace CourseProject.Controllers
         }
 
         [HttpPost]
+        [Authorize]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddComment(int templateId, string content)
         {
@@ -168,7 +201,6 @@ namespace CourseProject.Controllers
             _context.Comments.Add(comment);
             await _context.SaveChangesAsync();
 
-            // Загружаем автора для передачи клиентам
             comment.Author = user;
 
             var hubContext = HttpContext.RequestServices.GetRequiredService<IHubContext<CommentHub>>();
@@ -179,6 +211,8 @@ namespace CourseProject.Controllers
 
         public async Task<IActionResult> Success()
         {
+            ViewBag.IsCommentSaved = TempData["IsCommentSaved"] as bool? ?? false;
+            ViewBag.IsAnswersSaved = TempData["IsAnswersSaved"] as bool? ?? false;
             return View();
         }
     }
