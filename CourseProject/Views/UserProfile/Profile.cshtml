@@ -40,17 +40,17 @@
                     </a>
 
                     <!-- Кнопка редактирования -->
-                    <a asp-controller="CreateTemplate" asp-action="Edit"
-                       asp-route-templateId="Temtemplate.Id"
+                    <a id="editSelected"
+                       asp-controller="CreateTemplate"
+                       asp-action="Edit"
+                       data-base-url="@Url.Action("Edit", "CreateTemplate")"
                        class="btn btn-outline-primary"
-                       id="editSelected"
                        disabled>
                         <i class="bi bi-pencil-square"></i>
                     </a>
 
                     <!-- Форма удаления -->
                     <form id="deleteForm" asp-action="DeleteTemplates" method="post">
-                        <input type="hidden" name="templateIds" id="hiddenTemplateIds" />
                         @Html.AntiForgeryToken()
                         <button type="button"
                                 class="btn btn-outline-danger delete-template"
@@ -283,106 +283,97 @@
 @section Scripts {
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', () => {
             // Инициализация DataTable
-        $('#templatesTable').DataTable({
-            ordering: true,    // Включить сортировку
-            paging: false,     // Отключить пагинацию
-            info: false,       // Скрыть информацию
-            language: {        // Локализация
-                search: "Поиск:",
-                zeroRecords: "Записи не найдены"
-            },
-            columnDefs: [
-                { orderable: false, targets: 0 } // Отключить сортировку для колонки с чекбоксами
-            ]
-        });
+            new DataTable('#templatesTable', {
+                ordering: true,
+                paging: false,
+                info: false,
+                language: {
+                    search: "Поиск:",
+                    zeroRecords: "Записи не найдены"
+                },
+                columnDefs: [{
+                    orderable: false,
+                    targets: 0
+                }]
+            });
+
+            // Функция получения выбранных ID
+            const getSelectedIds = () =>
+                Array.from(document.querySelectorAll('.item-checkbox:checked'))
+                    .map(checkbox => {
+                        const tr = checkbox.closest('tr');
+                        return tr ? tr.dataset.id : null;
+                    })
+                    .filter(id => id !== null);
+
             // Функция обновления интерфейса
             const updateUI = () => {
-                const selected = document.querySelectorAll('.item-checkbox:checked').length;
-                const counter = document.getElementById('selectedCounter');
-                const countElement = counter?.querySelector('.count');
+                const selectedIds = getSelectedIds();
+                const selectedCount = selectedIds.length;
 
                 // Обновление счетчика
-                if (countElement && counter) {
-                    countElement.textContent = selected;
-                    counter.style.display = selected > 0 ? 'flex' : 'none';
+                const counter = document.getElementById('selectedCounter');
+                if (counter) {
+                    counter.style.display = selectedCount ? 'flex' : 'none';
+                    counter.querySelector('.count').textContent = selectedCount;
                 }
 
-                // Обновление кнопок
+                // Кнопка редактирования
                 const editButton = document.getElementById('editSelected');
-                const deleteButton = document.getElementById('deleteSelected');
-
                 if (editButton) {
-                    editButton.disabled = selected !== 1;
-                    if (selected === 1) {
-                        const templateId = document.querySelector('.item-checkbox:checked')
-                            .closest('tr').dataset.id;
-                        editButton.href = `@Url.Action("Edit", "CreateTemplate")/${templateId}`;
+                    editButton.disabled = selectedCount !== 1;
+                    if (selectedCount === 1) {
+                        editButton.href = `${editButton.dataset.baseUrl}/${selectedIds[0]}`;
                     }
                 }
 
+                // Кнопка удаления
+                const deleteButton = document.getElementById('deleteSelected');
                 if (deleteButton) {
-                    deleteButton.disabled = selected === 0;
+                    deleteButton.disabled = selectedCount === 0;
                 }
             };
 
-            // Обработчик для "Выбрать все"
-            const selectAll = document.getElementById('selectAll');
-            if (selectAll) {
-                selectAll.addEventListener('change', function() {
-                    document.querySelectorAll('.item-checkbox').forEach(cb => {
-                        cb.checked = this.checked;
-                    });
+            // Обработчик удаления
+            const handleDelete = () => {
+                const form = document.getElementById('deleteForm');
+                form.innerHTML = '@Html.AntiForgeryToken()'; 
+
+                getSelectedIds().forEach(id => {
+                    form.insertAdjacentHTML('beforeend',
+                        `<input type="hidden" name="templateIds" value="${id}">`);
+                });
+
+                form.submit();
+            };
+
+            //Обработчики событий
+            document.getElementById('selectAll')?.addEventListener('change', function(e) {
+                document.querySelectorAll('.item-checkbox').forEach(cb => {
+                    cb.checked = e.target.checked;
+                });
+                updateUI();
+            });
+
+            document.getElementById('templatesTable')?.addEventListener('change', e => {
+                if (e.target.matches('.item-checkbox')) {
+                    const allChecked = document.querySelectorAll('.item-checkbox:checked').length;
+                    const totalItems = document.querySelectorAll('.item-checkbox').length;
+                    document.getElementById('selectAll').checked = allChecked === totalItems;
+
                     updateUI();
-                });
-            }
-
-            // Обработчики для чекбоксов
-            document.querySelectorAll('.item-checkbox').forEach(cb => {
-                cb.addEventListener('change', updateUI);
+                }
             });
 
-            // Обработчик для кнопки удаления
-            document.querySelectorAll('.delete-template').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const selected = document.querySelectorAll('.item-checkbox:checked').length;
-                    const selectedCountElement = document.getElementById('selectedCount');
-
-                    if (selectedCountElement) {
-                        selectedCountElement.textContent = selected > 0 ? selected : 1;
-                    }
-
-                    const deleteModal = document.getElementById('deleteModal');
-                    if (deleteModal) {
-                        const modal = new bootstrap.Modal(deleteModal);
-                        const confirmDelete = document.getElementById('confirmDelete');
-
-                        // Обработчик подтверждения удаления (исправленная часть)
-                        const handleConfirm = () => {
-                            const ids = Array.from(document.querySelectorAll('.item-checkbox:checked'))
-                                .map(checkbox => {
-                                    const tr = checkbox.closest('tr');
-                                    return tr ? tr.dataset.id : null;
-                                })
-                                .filter(id => id !== null)
-                                .join(',');
-
-                            document.getElementById('hiddenTemplateIds').value = ids;
-                            document.getElementById('deleteForm').submit();
-
-                            modal.hide();
-                            confirmDelete.removeEventListener('click', handleConfirm);
-                        };
-
-                        confirmDelete.addEventListener('click', handleConfirm);
-                        modal.show();
-                    }
-                });
+            document.getElementById('deleteSelected')?.addEventListener('click', () => {
+                const selectedCount = getSelectedIds().length;
+                document.getElementById('selectedCount').textContent = selectedCount;
             });
 
-            // Первоначальное обновление UI
+            document.getElementById('confirmDelete')?.addEventListener('click', handleDelete);
+
             updateUI();
         });
     </script>

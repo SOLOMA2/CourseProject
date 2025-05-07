@@ -83,7 +83,7 @@ namespace CourseProject.Controllers
                     ModelState.AddModelError("", "Invalid credentials");
                     return View(model);
                 }
-                if (user != null)
+                else
                 {
                     var result = await _signInManager.PasswordSignInAsync(user, model.Password, model.RememberMe, lockoutOnFailure: false);
                     if (result.Succeeded)
@@ -94,6 +94,8 @@ namespace CourseProject.Controllers
                             await _userManager.UpdateAsync(user);
                             return RedirectToAction("AdminPanel", "UserManager");
                         }
+                        user.LastLogin = DateTime.Now;
+                        await _userManager.UpdateAsync(user);
                         return RedirectToAction("Index", "Home");
                     }
                 }
@@ -116,9 +118,10 @@ namespace CourseProject.Controllers
                 if (email != null)
                 {
                     TempData["UserEmail"] = model.Email;
-                    return RedirectToAction("ChangePaswword");
+                    return RedirectToAction("ChangePassword");
                 }
             }
+            ModelState.AddModelError(nameof(model.Email), "Invalid email");
             return View(model);
         }
 

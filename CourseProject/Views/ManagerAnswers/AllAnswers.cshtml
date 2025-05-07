@@ -294,7 +294,6 @@
 @section Scripts {
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Инициализация тултипов и поповеров
             const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
             popoverTriggerList.map(t => new bootstrap.Popover(t, {
                 trigger: 'focus',

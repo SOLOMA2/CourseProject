@@ -19,7 +19,6 @@ public class CommentHub : Hub
     {
         var user = await _userManager.GetUserAsync(Context.User);
 
-        // Сохраняем в базу
         var comment = new Comment
         {
             Content = content,
@@ -31,7 +30,6 @@ public class CommentHub : Hub
         _context.Comments.Add(comment);
         await _context.SaveChangesAsync();
 
-        // Отправляем всем клиентам
         await Clients.All.SendAsync("ReceiveComment", new
         {
             content = comment.Content,

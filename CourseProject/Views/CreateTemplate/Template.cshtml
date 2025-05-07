@@ -417,7 +417,6 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <partial name="_ValidationScriptsPartial" />
     <script>
-        // Обновленный код для управления видимостью блоков
         document.addEventListener('DOMContentLoaded', function() {
             // Находим элементы
             const privateRadio = document.getElementById('privateAccess');
@@ -425,25 +424,19 @@
             const privateBlock = document.getElementById('privateAccessBlock');
             const linkBlock = document.getElementById('linkAccessBlock');
 
-            // Функция обновления видимости
             function updateAccessBlocks() {
-                // Убедимся что элементы существуют
                 if (!privateRadio || !linkRadio || !privateBlock || !linkBlock) return;
 
-                // Устанавливаем видимость
                 privateBlock.style.display = privateRadio.checked ? 'block' : 'none';
                 linkBlock.style.display = linkRadio.checked ? 'block' : 'none';
             }
 
-            // Вешаем обработчики
             document.querySelectorAll('input[name="accessType"]').forEach(radio => {
                 radio.addEventListener('change', updateAccessBlocks);
             });
 
-            // Первоначальная настройка
             updateAccessBlocks();
 
-            // Добавим лог для отладки
             console.log('Инициализация завершена', {
                 privateChecked: privateRadio.checked,
                 linkChecked: linkRadio.checked
@@ -464,18 +457,15 @@
                 const response = await fetch(`/CreateTemplate/SearchUsers?term=${encodeURIComponent(term)}`);
                 const users = await response.json();
 
-                // Показываем простой dropdown
                 showSuggestions(users);
             }, 300);
         });
 
-        // Обновленная функция показа подсказок
+        // функция показа подсказок
         function showSuggestions(users) {
-            // Удаляем предыдущие подсказки
             const oldSuggestions = document.querySelector('.suggestions-container');
             if (oldSuggestions) oldSuggestions.remove();
 
-            // Создаем новый контейнер
             const container = document.createElement('div');
             container.className = 'suggestions-container mt-2 border rounded';
             container.style.maxHeight = '200px';
@@ -487,12 +477,11 @@
                 item.textContent = user.label;
                 item.onclick = () => {
                     addUser(user);
-                    container.remove(); // Удаляем контейнер после выбора
+                    container.remove(); 
                 };
                 container.appendChild(item);
             });
 
-            // Вставляем после поля поиска
             userSearch.parentNode.insertBefore(container, userSearch.nextSibling);
         }
 
@@ -510,7 +499,6 @@
             userSearch.value = '';
         }
 
-        // Валидация формы
         document.querySelector('form').onsubmit = function(e) {
             if(document.getElementById('privateAccess').checked &&
                document.querySelectorAll('[name="selectedUserIds"]').length === 0) {
@@ -587,13 +575,12 @@
                 initQuestion(item, type);
             });
 
-            // Общая инициализация
             initEventListeners();
             initSortable();
             initDropdowns();
         });
 
-        // Добавляем обработку существующих вопросов
+        //обработка существующих вопросов
         function initQuestion(questionItem, type) {
             const optionsContainer = questionItem.querySelector('.options-container');
             if (optionsContainer) {
@@ -703,7 +690,7 @@
         }
 
         // Генерация тела вопроса
-                function generateQuestionBody(type, questionIndex) {
+        function generateQuestionBody(type, questionIndex) {
             const typeConfig = QUESTION_TYPES[type];
             return `
                 <input type="hidden" name="Questions[${questionIndex}].Order" value="${questionIndex}" class="question-order" />
@@ -812,7 +799,7 @@
         });
 
         // Обновление индексов вопросов
-                function updateQuestionIndexes() {
+        function updateQuestionIndexes() {
             document.querySelectorAll('.question-item').forEach((item, index) => {
                 const orderInput = item.querySelector('.question-order');
                 if (orderInput) orderInput.value = index;
@@ -851,13 +838,9 @@
 
         function reindexQuestions() {
             document.querySelectorAll('.question-item').forEach((item, index) => {
-                // Обновление data-атрибута
                 item.dataset.questionIndex = index;
-
-                // Обновление скрытого поля Order
                 item.querySelector('.question-order').value = index;
 
-                // Обновление имен полей ввода
                 item.querySelectorAll('input, select, textarea').forEach(input => {
                     const name = input.getAttribute('name');
                     if (name) {
@@ -869,7 +852,6 @@
                     }
                 });
 
-                // Обновление опций внутри вопроса
                 item.querySelectorAll('.options-container [name*="Options"]').forEach((option, optionIndex) => {
                     const name = option.getAttribute('name');
                     if (name) {
@@ -896,7 +878,6 @@
             return attributes[type] || 'type="text"';
         }
 
-        // Вспомогательные функции
         function getQuestionIcon(type) {
             return QUESTION_TYPES[type]?.icon || 'bi-question-circle';
         }

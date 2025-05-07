@@ -172,81 +172,74 @@
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
     <script>
-        // Обработчик для "Выбрать все" и инициализация тултипов
-        document.addEventListener('DOMContentLoaded', function() {
-            // Чекбокс "Выбрать все"
-            document.getElementById('selectAll').addEventListener('change', function() {
-                const checkboxes = document.querySelectorAll('input[name="userIds"]');
-                checkboxes.forEach(checkbox => checkbox.checked = this.checked);
-            });
-
-            // Инициализация тултипов
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl, {
-                    delay: { show: 100, hide: 50 }
+        document.addEventListener('DOMContentLoaded', () => {
+            //Обработчик "Выбрать все"
+            document.getElementById('selectAll')?.addEventListener('change', ({ target }) => {
+                document.querySelectorAll('input[name="userIds"]').forEach(checkbox => {
+                    checkbox.checked = target.checked;
                 });
             });
 
-            // Инициализация модального окна
+            // Инициализация тултипов
+            const initTooltips = () => {
+                document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+                    new bootstrap.Tooltip(el, { delay: { show: 100, hide: 50 } });
+                });
+            };
+            initTooltips();
+
+            // Обработчик модального окна ролей
             const rolesModal = document.getElementById('rolesModal');
-            rolesModal.addEventListener('show.bs.modal', function(event) {
-                const button = event.relatedTarget;
-                const userId = button.getAttribute('data-user-id');
-                const roles = JSON.parse(button.getAttribute('data-user-roles'));
+            rolesModal?.addEventListener('show.bs.modal', ({ relatedTarget }) => {
+                const { userId, userRoles } = relatedTarget.dataset;
+                const form = document.getElementById('rolesForm');
 
-                console.log('User ID:', userId); // Для отладки
-                console.log('Current Roles:', roles); // Для отладки
-
-                // Установка значений в форму
-                document.getElementById('modalUserId').value = userId;
-
-                // Сброс чекбоксов
-                document.querySelectorAll('#rolesForm input[type="checkbox"]').forEach(checkbox => {
-                    checkbox.checked = roles.includes(checkbox.value);
+                form.userId.value = userId;
+                form.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+                    checkbox.checked = JSON.parse(userRoles).includes(checkbox.value);
                 });
             });
         });
 
-                        async function submitRolesForm() {
-            // Подтверждение действия
-            if (!confirm('Вы уверены, что хотите сохранить изменения?')) {
-                return; // Отмена действия
+        // Отправка формы ролей
+        const submitRolesForm = async () => {
+            if (!confirm('Вы уверены, что хотите сохранить изменения?')) return;
+
+            try {
+                const form = document.getElementById('rolesForm');
+                const formData = new FormData(form);
+                const userId = formData.get('userId');
+
+                // Отправка данных
+                await fetch('@Url.Action("UpdateRoles")', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                // Обновление интерфейса
+                const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+                const rolesResponse = await fetch(`@Url.Action("GetUserRoles")?userId=${userId}`);
+                const roles = await rolesResponse.json();
+
+                row.querySelector('.roles-container').innerHTML = `
+                    ${roles.map(role => `
+                        <span class="badge bg-primary rounded-pill">${role}</span>
+                    `).join('')}
+                    <button type="button"
+                            class="btn btn-link btn-sm p-0 ms-2"
+                            data-bs-toggle="modal"
+                            data-bs-target="#rolesModal"
+                            data-user-id="${userId}"
+                            data-user-roles='${JSON.stringify(roles)}'>
+                        <i class="bi bi-pencil-square"></i>
+                    </button>
+                `;
+
+                bootstrap.Modal.getInstance('#rolesModal').hide();
+                initTooltips();
+            } catch (error) {
+                console.error('Ошибка при обновлении ролей:', error);
             }
-
-            const form = document.getElementById('rolesForm');
-            const formData = new FormData(form);
-
-            // Отправка данных
-            await fetch('@Url.Action("UpdateRoles")', {
-                method: 'POST',
-                body: formData
-            });
-
-            // Обновление интерфейса
-            const userId = formData.get('userId');
-            const row = document.querySelector(`tr[data-user-id="${userId}"]`);
-            const rolesContainer = row.querySelector('.roles-container');
-
-            // Получение обновленных ролей
-            const rolesResponse = await fetch(`@Url.Action("GetUserRoles")?userId=${userId}`);
-            const roles = await rolesResponse.json();
-
-            // Обновление блока с ролями
-            rolesContainer.innerHTML = roles.map(role =>
-                `<span class="badge bg-primary rounded-pill">${role}</span>`
-            ).join('') +
-            `<button type="button"
-                    class="btn btn-link btn-sm p-0 ms-2"
-                    data-bs-toggle="modal"
-                    data-bs-target="#rolesModal"
-                    data-user-id="${userId}"
-                    data-user-roles='${JSON.stringify(roles)}'>
-                <i class="bi bi-pencil-square"></i>
-            </button>`;
-
-            // Закрытие модального окна
-            bootstrap.Modal.getInstance(document.getElementById('rolesModal')).hide();
-        }
+        };
     </script>
 }

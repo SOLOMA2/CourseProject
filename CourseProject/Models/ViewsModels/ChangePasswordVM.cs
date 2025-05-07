@@ -11,7 +11,7 @@ namespace CourseProject.Models.ViewsModels
         [DataType(DataType.Password)]
         public string NewPassword { get; set; }
         [Required(ErrorMessage = "Confirm is required.")]
-        [Compare("Password", ErrorMessage = "Password don't match(")]
+        [Compare("NewPassword", ErrorMessage = "Passwords don't match")]
         [DataType(DataType.Password)]
         public string ConfirmPassword { get; set; }
     }

@@ -32,18 +32,18 @@ builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 }).AddEntityFrameworkStores<AppUserDbContext>().
 AddDefaultTokenProviders();
 
-builder.Services.ConfigureApplicationCookie(options =>
-{
-    options.ExpireTimeSpan = TimeSpan.FromMinutes(20); // Необязательно: время жизни при "Запомнить меня"
-    options.SlidingExpiration = true;
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SameSite = SameSiteMode.Strict;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+//builder.Services.ConfigureApplicationCookie(options =>
+//{
+//    options.ExpireTimeSpan = TimeSpan.FromMinutes(20); // Необязательно: время жизни при "Запомнить меня"
+//    options.SlidingExpiration = true;
+//    options.Cookie.HttpOnly = true;
+//    options.Cookie.SameSite = SameSiteMode.Strict;
+//    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 
-    // Важно: куки будут удаляться при закрытии браузера
-    options.Cookie.IsEssential = true;
-    options.Cookie.MaxAge = null; // Сессионная кука (удаляется при закрытии браузера)
-});
+//    // Важно: куки будут удаляться при закрытии браузера
+//    options.Cookie.IsEssential = true;
+//    options.Cookie.MaxAge = null; // Сессионная кука (удаляется при закрытии браузера)
+//});
 
 var app = builder.Build();
 

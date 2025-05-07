@@ -219,13 +219,12 @@
     <partial name="_ValidationScriptsPartial" />
         <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
     <script>
-        // Подключение к хабу комментариев
-            // 1. Подключение к хабу
+            //Подключение к хабу
         const commentHub = new signalR.HubConnectionBuilder()
             .withUrl("/commentHub")
             .build();
 
-        // 2. Обработчик отправки комментария
+        //Обработчик отправки комментария
         document.getElementById('sendComment')?.addEventListener('click', async () => {
             const commentText = document.getElementById('commentInput').value;
             const templateId = @Model.Template.Id;
@@ -238,7 +237,7 @@
             }
         });
 
-        // 3. Обработчик получения новых комментариев
+        //Обработчик получения новых комментариев
         commentHub.on("ReceiveComment", (comment) => {
             const commentsList = document.getElementById('commentsList');
             const commentsCount = document.getElementById('commentsCount');
@@ -264,7 +263,7 @@
             commentsCount.textContent = parseInt(commentsCount.textContent) + 1;
         });
 
-        // 4. Запуск подключения
+        //  Запуск подключения
         commentHub.start()
             .then(() => console.log('SignalR подключен'))
             .catch(err => console.error('Ошибка подключения:', err));
@@ -305,7 +304,6 @@
             document.querySelectorAll('[data-text-type]').forEach(input => {
                 const textType = input.dataset.textType;
 
-                // Устанавливаем тип и паттерн в зависимости от data-text-type
                 switch(textType) {
                     case 'number':
                         input.type = 'number';
@@ -323,7 +321,6 @@
                         break;
                 }
 
-                // Кастомные сообщения об ошибках
                 input.addEventListener('invalid', function(e) {
                     const messages = {
                         number: 'Пожалуйста, введите число',
@@ -406,7 +403,6 @@
 
 @section Styles {
     <style>
-        /* Добавить в секцию Styles */
         .comment-content {
             position: relative;
             transition: all 0.3s ease;
