@@ -60,6 +60,8 @@ namespace CourseProject.Controllers
             _context.Views.Add(view);
             await _context.SaveChangesAsync();
 
+            ViewBag.Template = template;
+
             var updatedViewsCount = await _context.Views
                 .CountAsync(v => v.TemplateId == templateId);
 
